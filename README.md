@@ -1,1 +1,1 @@
-# FileAttributeRecorder for Windows
+# FileInfoTool for Windows
