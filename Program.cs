@@ -1,35 +1,27 @@
 ﻿/* 2023/10/26 */
-using FileAttributeRecorder.Info;
+using FileInfoTool.Info;
 
-string opearation;
-string dirPath;
-if (args.Length == 0)
+Console.WriteLine($"[{string.Join(", ", args)}]");
+
+(string dirPath, string? operation, bool? recursive) = ConsoleArgsParser.ParseArgs(args);
+
+if (operation == null)
 {
     Console.WriteLine("No operation specified.");
     return;
 }
-else
-{
-    opearation = args[0];
-}
 
-if (args.Length > 1)
+var infoTool = new FileInfoTool.Info.FileInfoTool(dirPath, recursive: recursive ?? false);
+switch (operation)
 {
-    dirPath = args[1];
-}
-else
-{
-    dirPath = ".";
-}
-
-var fileInfoTool = new FileInfoTool(dirPath);
-switch (opearation)
-{
-    case "-s":
-        fileInfoTool.SaveFileDate();
+    case "save":
+        infoTool.Save();
         break;
-    case "-r":
-        fileInfoTool.RestoreFileDate();
+    case "restore":
+        infoTool.Restore();
+        break;
+    case "validate":
+        infoTool.Validate();
         break;
     default:
         Console.WriteLine("No valid operation specified.");
