@@ -10,11 +10,6 @@ namespace FileInfoTool.Extensions
             return dateTime.ToString("O");
         }
 
-        internal static bool ValidateISOString(this DateTime dateTime, string isoString)
-        {
-            return dateTime.ToISOString().Equals(isoString);
-        }
-
         internal static DateTime ParseISOString(string isoString)
         {
             return DateTime.ParseExact(isoString, "O", CultureInfo.InvariantCulture);

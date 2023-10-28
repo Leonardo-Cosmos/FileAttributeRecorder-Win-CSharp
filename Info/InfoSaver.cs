@@ -7,9 +7,19 @@ namespace FileInfoTool.Info
 {
     internal class InfoSaver
     {
-        public void Save(string dirPath, bool recursive)
+        private readonly string dirPath;
+
+        private readonly string infoFilePath;
+
+        public InfoSaver(string dirPath, string infoFilePath)
         {
-            Console.WriteLine($"Save file system info of directory, path: {dirPath}, recursive: {recursive}");
+            this.dirPath = dirPath;
+            this.infoFilePath = infoFilePath;
+        }
+
+        public void Save(bool recursive)
+        {
+            Console.WriteLine($"Save file system info, directory: {dirPath}, info file: {infoFilePath}, recursive: {recursive}");
             var directory = new DirectoryInfo(dirPath);
             if (!directory.Exists)
             {
@@ -27,17 +37,31 @@ namespace FileInfoTool.Info
                 RecordTimeUtcTicks = currentDateTime.Ticks,
             };
 
-            string json = JsonConvert.SerializeObject(infoRecord, Formatting.Indented);
-            File.WriteAllText(Path.Combine(dirPath, InfoRecord.RecordFileName), json);
+            string json = JsonConvert.SerializeObject(infoRecord, Formatting.Indented,
+                new JsonSerializerSettings
+                {
+                    DefaultValueHandling = DefaultValueHandling.Ignore
+                });
+            File.WriteAllText(infoFilePath, json);
         }
 
         private DirectoryInfoRecord Save(DirectoryInfo directory, bool recursive)
         {
             var dirInfoRecord = SaveInfoRecord<DirectoryInfoRecord>(directory);
-            PrintSavedInfoRecord(dirInfoRecord);
 
-            var fileInfoRecords = new List<FileSystemInfoRecord>();
-            foreach (var file in directory.GetFiles())
+            var fileInfoRecords = new List<FileInfoRecord>();
+            FileInfo[] files;
+            try
+            {
+                files = directory.GetFiles();
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(ex.Message);
+                dirInfoRecord.GetFilesFailed = true;
+                files = Array.Empty<FileInfo>();
+            }
+            foreach (var file in files)
             {
                 if (InfoRecord.RecordFileName == file.Name)
                 {
@@ -45,7 +69,6 @@ namespace FileInfoTool.Info
                 }
 
                 var fileInfoRecord = SaveInfoRecord<FileInfoRecord>(file);
-                PrintSavedInfoRecord(fileInfoRecord);
                 fileInfoRecords.Add(fileInfoRecord);
             }
             dirInfoRecord.Files = fileInfoRecords;
@@ -53,7 +76,18 @@ namespace FileInfoTool.Info
             if (recursive)
             {
                 var subDirInfoRecords = new List<DirectoryInfoRecord>();
-                foreach (var subDirectory in directory.GetDirectories())
+                DirectoryInfo[] subDirectories;
+                try
+                {
+                    subDirectories = directory.GetDirectories();
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine(ex.Message);
+                    dirInfoRecord.GetDirectoriesFailed = true;
+                    subDirectories = Array.Empty<DirectoryInfo>();
+                }
+                foreach (var subDirectory in subDirectories)
                 {
                     var subDirInfoRecord = Save(subDirectory, recursive: true);
                     subDirInfoRecords.Add(subDirInfoRecord);
@@ -64,10 +98,10 @@ namespace FileInfoTool.Info
             return dirInfoRecord;
         }
 
-        private static InfoRecord SaveInfoRecord<InfoRecord>(FileSystemInfo info)
+        private InfoRecord SaveInfoRecord<InfoRecord>(FileSystemInfo info)
             where InfoRecord : FileSystemInfoRecord, new()
         {
-            return new InfoRecord()
+            var infoRecord = new InfoRecord()
             {
                 Name = info.Name,
                 CreationTimeUtc = info.CreationTimeUtc.ToISOString(),
@@ -77,9 +111,18 @@ namespace FileInfoTool.Info
                 LastAccessTimeUtc = info.LastAccessTimeUtc.ToISOString(),
                 LastAccessTimeUtcTicks = info.LastAccessTimeUtc.Ticks,
             };
+
+            if (info is FileInfo file)
+            {
+                var fileInfoRecord = infoRecord as FileInfoRecord;
+                fileInfoRecord!.Size = file.Length;
+            }
+
+            PrintSavedInfoRecord(info, infoRecord);
+            return infoRecord;
         }
 
-        private static void PrintSavedInfoRecord(FileSystemInfoRecord infoRecord)
+        private void PrintSavedInfoRecord(FileSystemInfo info, FileSystemInfoRecord infoRecord)
         {
             if (infoRecord is FileInfoRecord)
             {
@@ -89,10 +132,14 @@ namespace FileInfoTool.Info
             {
                 Console.Write("Saved directory");
             }
-            Console.WriteLine($" name: {infoRecord.Name}");
+            Console.WriteLine($" {info.GetRelativePath(dirPath)}");
             Console.WriteLine($"  creation time: {infoRecord.CreationTimeUtc}");
             Console.WriteLine($"  last write time: {infoRecord.LastWriteTimeUtc},");
             Console.WriteLine($"  last access time: {infoRecord.LastAccessTimeUtc}");
+            if (infoRecord is FileInfoRecord fileInfoRecord)
+            {
+                Console.WriteLine($"  size: {fileInfoRecord.Size}");
+            }
         }
     }
 }

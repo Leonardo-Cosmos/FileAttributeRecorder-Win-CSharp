@@ -6,27 +6,30 @@ namespace FileInfoTool.Info
     {
         private readonly string dirPath;
 
+        private readonly string infoFilePath;
+
         private readonly bool recursive;
 
-        public FileInfoTool(string dirPath, bool recursive = false)
+        public FileInfoTool(string dirPath, string infoFilePath, bool recursive = false)
         {
             this.dirPath = dirPath;
+            this.infoFilePath = infoFilePath;
             this.recursive = recursive;
         }
 
         public void Save()
         {
-            new InfoSaver().Save(dirPath, recursive);
+            new InfoSaver(dirPath, infoFilePath).Save(recursive);
         }
 
         public void Restore()
         {
-            new InfoLoader().Load(dirPath, recursive, true);
+            new InfoLoader(dirPath, infoFilePath).Load(recursive, true);
         }
 
         public void Validate()
         {
-            new InfoLoader().Load(dirPath, recursive, false);
+            new InfoLoader(dirPath, infoFilePath).Load(recursive, false);
         }
     }
 }

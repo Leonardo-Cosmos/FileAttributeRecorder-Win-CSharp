@@ -1,14 +1,17 @@
-﻿/* 2023/10/26 */
+﻿using FileInfoTool.Models;
+/* 2023/10/26 */
 
 namespace FileInfoTool.Info
 {
     internal static class ConsoleArgsParser
     {
-        private static readonly string[] operationKeys = new string[] { "-o", "-operation" };
+        private static readonly string[] infoFilePathKeys = new string[] { "-f", "-file" };
+
+        private static readonly string[] modeKeys = new string[] { "-m", "-mode" };
 
         private static readonly string[] recursiveKeys = new string[] { "-r", "-recursive" };
 
-        public static (string, string?, bool?) ParseArgs(string[] args)
+        public static (string, string, string?, bool) ParseArgs(string[] args)
         {
             string dirPath;
             if (args.Length > 1 && !args[0].StartsWith('-'))
@@ -22,49 +25,49 @@ namespace FileInfoTool.Info
 
             var argDict = args.Aggregate(new Dictionary<string, string>(), (dict, arg) =>
             {
-                if (arg.Contains('='))
+                if (arg.StartsWith('-'))
                 {
                     var values = arg.Split('=');
-                    dict.Add(values[0], values[1]);
+                    if (values.Length > 1)
+                    {
+                        // Argument of key value pair.
+                        dict.Add(values[0], values[1]);
+                    }
+                    else
+                    {
+                        // Argument of key only.
+                        dict.Add(values[0], "");
+                    }
                 }
                 return dict;
             });
 
-
-            string? operation = null;
-            foreach (var key in operationKeys)
+            string? mode = null;
+            var foundModeKey = Array.Find(modeKeys, argDict.ContainsKey);
+            if (foundModeKey != null)
             {
-                if (argDict.ContainsKey(key))
-                { 
-                    operation = argDict[key];
-                    break;
-                }
+                mode = argDict[foundModeKey];
             }
 
-            string? recursiveValue = null;
-            foreach (var key in recursiveKeys)
+            bool recursive = false;
+            var foundRecursiveKey = Array.Find(recursiveKeys, argDict.ContainsKey);
+            if (foundRecursiveKey != null)
             {
-                if (argDict.ContainsKey(key))
-                {
-                    recursiveValue = argDict[key];
-                    break;
-                }
+                recursive = true;
             }
 
-            bool? recursive = null;
-            if (recursiveValue != null)
+            string infoFilePath;
+            var foundInfoFileKey = Array.Find(infoFilePathKeys, argDict.ContainsKey);
+            if (foundInfoFileKey != null)
             {
-                try
-                {
-                    recursive = bool.Parse(recursiveValue);
-                }
-                catch
-                {
-                    // Invalid format.
-                }
+                infoFilePath = argDict[foundInfoFileKey];
+            }
+            else
+            {
+                infoFilePath = Path.Combine(dirPath, InfoRecord.RecordFileName);
             }
 
-            return (dirPath, operation, recursive);
+            return (dirPath, infoFilePath, mode, recursive);
         }
     }
 }

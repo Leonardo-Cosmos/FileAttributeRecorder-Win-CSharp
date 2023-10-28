@@ -7,9 +7,19 @@ namespace FileInfoTool.Info
 {
     internal class InfoLoader
     {
-        public void Load(string dirPath, bool recursive, bool restore)
+        private readonly string dirPath;
+
+        private readonly string infoFilePath;
+
+        public InfoLoader(string dirPath, string infoFilePath)
         {
-            Console.WriteLine($"Load directory: path: {dirPath}, recursive: {recursive}, restore: {restore}");
+            this.dirPath = dirPath;
+            this.infoFilePath = infoFilePath;
+        }
+
+        public void Load(bool recursive, bool restore)
+        {
+            Console.WriteLine($"Load file system info, directory: {dirPath}, info file: {infoFilePath}, recursive: {recursive}, restore: {restore}");
 
             var directory = new DirectoryInfo(dirPath);
             if (!directory.Exists)
@@ -18,7 +28,13 @@ namespace FileInfoTool.Info
                 return;
             }
 
-            var json = File.ReadAllText(Path.Combine(dirPath, InfoRecord.RecordFileName));
+            if (!File.Exists(infoFilePath))
+            {
+                Console.WriteLine($"Info file doesn't exist, path: {infoFilePath}");
+                return;
+            }
+
+            var json = File.ReadAllText(infoFilePath);
             var infoRecord = JsonConvert.DeserializeObject<InfoRecord>(json);
             if (infoRecord == null)
             {
@@ -32,22 +48,10 @@ namespace FileInfoTool.Info
         private void Load(DirectoryInfo directory, DirectoryInfoRecord dirInfoRecord,
             bool recursive, bool restore)
         {
-            LoadInfoRecord(directory, dirInfoRecord, restore);
-
-            var fileInfoRecords = dirInfoRecord.Files ?? new List<FileSystemInfoRecord>();
-            foreach (var file in directory.GetFiles())
-            {
-                var fileInfoRecord = fileInfoRecords
-                    .Find(infoRecord => infoRecord.Name == file.Name);
-                if (fileInfoRecord != null)
-                {
-                    LoadInfoRecord(file, fileInfoRecord, restore);
-                }
-            }
-
             if (recursive)
             {
                 var subDirInfoRecords = dirInfoRecord.Directories ?? new List<DirectoryInfoRecord>();
+                var loadedSubDirInfoRecords = new List<DirectoryInfoRecord>();
                 foreach (var subDirectory in directory.GetDirectories())
                 {
                     var subDirInfoRecord = subDirInfoRecords
@@ -55,35 +59,105 @@ namespace FileInfoTool.Info
                     if (subDirInfoRecord != null)
                     {
                         LoadInfoRecord(subDirectory, subDirInfoRecord, restore);
+                        loadedSubDirInfoRecords.Add(subDirInfoRecord);
                     }
+                }
+
+                var missedSubDirInfoRecords = subDirInfoRecords.Except(loadedSubDirInfoRecords);
+                PrintMissedInfoRecords(directory, missedSubDirInfoRecords);
+            }
+
+            var fileInfoRecords = dirInfoRecord.Files ?? new List<FileInfoRecord>();
+            var loadedFileInfoRecords = new List<FileInfoRecord>();
+            foreach (var file in directory.GetFiles())
+            {
+                var fileInfoRecord = fileInfoRecords
+                    .Find(infoRecord => infoRecord.Name == file.Name);
+                if (fileInfoRecord != null)
+                {
+                    LoadInfoRecord(file, fileInfoRecord, restore);
+                    loadedFileInfoRecords.Add(fileInfoRecord);
+                }
+            }
+
+            var missedFileInfoRecords = fileInfoRecords.Except(loadedFileInfoRecords);
+            PrintMissedInfoRecords(directory, missedFileInfoRecords);
+
+            LoadInfoRecord(directory, dirInfoRecord, restore);
+        }
+
+        private void PrintMissedInfoRecords(DirectoryInfo dirInfo, IEnumerable<FileSystemInfoRecord> infoRecords)
+        {
+            foreach (var infoRecord in infoRecords)
+            {
+                if (infoRecord is FileInfoRecord)
+                {
+                    var file = new FileInfo(Path.Combine(dirInfo.FullName, infoRecord.Name ?? "*"));
+                    Console.WriteLine($"Missed file {file.GetRelativePath(dirPath)}");
+                }
+                else if (infoRecord is DirectoryInfoRecord)
+                {
+                    var subDir = new DirectoryInfo(Path.Combine(dirInfo.FullName, infoRecord.Name ?? "*"));
+                    Console.WriteLine($"Missed directory: {subDir.GetRelativePath(dirPath)}");
                 }
             }
         }
 
-        private static void LoadInfoRecord(FileSystemInfo info, FileSystemInfoRecord infoRecord, bool restore)
+        private void LoadInfoRecord(FileSystemInfo info, FileSystemInfoRecord infoRecord, bool restore)
         {
+            string? changedCreationTimeUtc = null;
             var isCreationTimeChanged = ValidateISOString(info.CreationTimeUtc, infoRecord.CreationTimeUtc);
-            if (isCreationTimeChanged && restore)
+            if (isCreationTimeChanged)
             {
-                info.CreationTimeUtc = DateTimeExtension.ParseISOString(infoRecord.CreationTimeUtc!);
+                changedCreationTimeUtc = info.CreationTimeUtc.ToISOString();
+                if (restore)
+                {
+                    info.CreationTimeUtc = DateTimeExtension.ParseISOString(infoRecord.CreationTimeUtc!);
+                }
             }
 
+            string? changedLastWriteTimeUtc = null;
             var isLastWriteTimeChanged = ValidateISOString(info.LastWriteTimeUtc, infoRecord.LastWriteTimeUtc);
-            if (isLastWriteTimeChanged && restore)
+            if (isLastWriteTimeChanged)
             {
-                info.LastWriteTimeUtc = DateTimeExtension.ParseISOString(infoRecord.LastWriteTimeUtc!);
+                changedLastWriteTimeUtc = info.LastWriteTimeUtc.ToISOString();
+                if (restore)
+                {
+                    info.LastWriteTimeUtc = DateTimeExtension.ParseISOString(infoRecord.LastWriteTimeUtc!);
+                }
             }
 
+            string? changedLastAccessTimeUtc = null;
             var isLastAccessTimeChanged = ValidateISOString(info.LastAccessTimeUtc, infoRecord.LastAccessTimeUtc);
-            if (isLastAccessTimeChanged && restore)
+            if (isLastAccessTimeChanged)
             {
-                info.LastAccessTimeUtc = DateTimeExtension.ParseISOString(infoRecord.LastAccessTimeUtc!);
+                changedLastAccessTimeUtc = info.LastAccessTimeUtc.ToISOString();
+                if (restore)
+                {
+                    info.LastAccessTimeUtc = DateTimeExtension.ParseISOString(infoRecord.LastAccessTimeUtc!);
+                }
             }
 
-            if (isCreationTimeChanged || isLastWriteTimeChanged || isLastAccessTimeChanged)
+            long? changedFileSize = null;
+            bool isFileSizeChanged = false;
+            if (!restore && info is FileInfo file)
             {
-                PrintLoadedInfoRecord(infoRecord, restore,
-                    isCreationTimeChanged, isLastWriteTimeChanged, isLastAccessTimeChanged);
+                var fileInfoRecord = infoRecord as FileInfoRecord;
+                if (file.Length != fileInfoRecord!.Size)
+                {
+                    isFileSizeChanged = true;
+                    changedFileSize = file.Length;
+                }
+            }
+
+            if (isCreationTimeChanged || isLastWriteTimeChanged || isLastAccessTimeChanged
+                || isFileSizeChanged)
+            {
+                PrintLoadedInfoRecord(info, infoRecord, restore,
+                    changedCreationTimeUtc,
+                    changedLastWriteTimeUtc,
+                    changedLastAccessTimeUtc,
+                    changedFileSize);
             }
         }
 
@@ -95,12 +169,15 @@ namespace FileInfoTool.Info
             }
             else
             {
-                return dateTime.ValidateISOString(isoString);
+                return !dateTime.ToISOString().Equals(isoString);
             }
         }
 
-        private static void PrintLoadedInfoRecord(FileSystemInfoRecord infoRecord, bool restore,
-            bool isCreationTimeChanged, bool isLastWriteTimeChanged, bool isLastAccessTimeChanged)
+        private void PrintLoadedInfoRecord(FileSystemInfo info, FileSystemInfoRecord infoRecord, bool restore,
+            string? changedCreationTimeUtc,
+            string? changedLastWriteTimeUtc,
+            string? changedLastAccessTimeUtc,
+            long? changedFileSize)
         {
             if (restore)
             {
@@ -120,18 +197,23 @@ namespace FileInfoTool.Info
                 Console.Write(" directory");
             }
 
-            Console.WriteLine($" name: {infoRecord.Name}");
-            if (isCreationTimeChanged)
+            Console.WriteLine($" {info.GetRelativePath(dirPath)}");
+            if (changedCreationTimeUtc != null)
             {
-                Console.WriteLine($"  creation time: {infoRecord.CreationTimeUtc}");
+                Console.WriteLine($"  creation time: {infoRecord.CreationTimeUtc} -> {changedCreationTimeUtc}");
             }
-            if (isLastWriteTimeChanged)
+            if (changedLastWriteTimeUtc != null)
             {
-                Console.WriteLine($"  last write time: {infoRecord.LastWriteTimeUtc},");
+                Console.WriteLine($"  last write time: {infoRecord.LastWriteTimeUtc} -> {changedLastWriteTimeUtc},");
             }
-            if (isLastAccessTimeChanged)
+            if (changedLastAccessTimeUtc != null)
             {
-                Console.WriteLine($"  last access time: {infoRecord.LastAccessTimeUtc}");
+                Console.WriteLine($"  last access time: {infoRecord.LastAccessTimeUtc} -> {changedLastAccessTimeUtc}");
+            }
+            if (changedFileSize != null)
+            {
+                var fileInfoRecord = infoRecord as FileInfoRecord;
+                Console.WriteLine($"  size: {fileInfoRecord!.Size} -> {changedFileSize}");
             }
         }
     }

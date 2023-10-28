@@ -1,18 +1,19 @@
 ﻿/* 2023/10/26 */
 using FileInfoTool.Info;
 
-Console.WriteLine($"[{string.Join(", ", args)}]");
+// Console.WriteLine($"[{string.Join(", ", args)}]");
 
-(string dirPath, string? operation, bool? recursive) = ConsoleArgsParser.ParseArgs(args);
+(string dirPath, string infoFilePath, string? mode, bool? recursive) = ConsoleArgsParser.ParseArgs(args);
 
-if (operation == null)
+if (mode == null)
 {
-    Console.WriteLine("No operation specified.");
+    Console.WriteLine("Mode is not specified.");
     return;
 }
 
-var infoTool = new FileInfoTool.Info.FileInfoTool(dirPath, recursive: recursive ?? false);
-switch (operation)
+var infoTool = new FileInfoTool.Info.FileInfoTool(dirPath, infoFilePath,
+    recursive: recursive ?? false);
+switch (mode)
 {
     case "save":
         infoTool.Save();
@@ -24,6 +25,6 @@ switch (operation)
         infoTool.Validate();
         break;
     default:
-        Console.WriteLine("No valid operation specified.");
+        Console.WriteLine("No valid mode specified.");
         break;
 }

@@ -2,7 +2,7 @@
 
 namespace FileInfoTool.Models
 {
-    class InfoRecord
+    internal class InfoRecord
     {
         public const string RecordFileName = "Info.json";
 
