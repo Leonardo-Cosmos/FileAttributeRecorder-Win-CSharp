@@ -63,11 +63,6 @@ namespace FileInfoTool.Info
             }
             foreach (var file in files)
             {
-                if (InfoRecord.RecordFileName == file.Name)
-                {
-                    continue;
-                }
-
                 var fileInfoRecord = SaveInfoRecord<FileInfoRecord>(file);
                 fileInfoRecords.Add(fileInfoRecord);
             }

@@ -3,28 +3,26 @@ using FileInfoTool.Info;
 
 // Console.WriteLine($"[{string.Join(", ", args)}]");
 
-(string dirPath, string infoFilePath, string? mode, bool? recursive) = ConsoleArgsParser.ParseArgs(args);
-
-if (mode == null)
+LaunchOption option;
+try
 {
-    Console.WriteLine("Mode is not specified.");
+    option = ConsoleArgsParser.ParseArgs(args);
+}
+catch (Exception ex)
+{
+    Console.Error.WriteLine(ex.Message);
     return;
 }
 
-var infoTool = new FileInfoTool.Info.FileInfoTool(dirPath, infoFilePath,
-    recursive: recursive ?? false);
-switch (mode)
+switch (option.Mode)
 {
-    case "save":
-        infoTool.Save();
+    case Mode.Save:
+        FileInfoTool.Info.FileInfoTool.Save(option);
         break;
-    case "restore":
-        infoTool.Restore();
+    case Mode.Restore:
+        FileInfoTool.Info.FileInfoTool.Restore(option);
         break;
-    case "validate":
-        infoTool.Validate();
-        break;
-    default:
-        Console.WriteLine("No valid mode specified.");
+    case Mode.Validate:
+        FileInfoTool.Info.FileInfoTool.Validate(option);
         break;
 }

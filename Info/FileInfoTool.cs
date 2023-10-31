@@ -2,34 +2,21 @@
 
 namespace FileInfoTool.Info
 {
-    internal class FileInfoTool
+    internal static class FileInfoTool
     {
-        private readonly string dirPath;
-
-        private readonly string infoFilePath;
-
-        private readonly bool recursive;
-
-        public FileInfoTool(string dirPath, string infoFilePath, bool recursive = false)
+        public static void Save(LaunchOption option)
         {
-            this.dirPath = dirPath;
-            this.infoFilePath = infoFilePath;
-            this.recursive = recursive;
+            new InfoSaver(option.DirPath, option.OutputFile!).Save(option.Recursive);
         }
 
-        public void Save()
+        public static void Restore(LaunchOption option)
         {
-            new InfoSaver(dirPath, infoFilePath).Save(recursive);
+            new InfoLoader(option.DirPath, option.InputFile!).Load(option.Recursive, true);
         }
 
-        public void Restore()
+        public static void Validate(LaunchOption option)
         {
-            new InfoLoader(dirPath, infoFilePath).Load(recursive, true);
-        }
-
-        public void Validate()
-        {
-            new InfoLoader(dirPath, infoFilePath).Load(recursive, false);
+            new InfoLoader(option.DirPath, option.InputFile!).Load(option.Recursive, false);
         }
     }
 }

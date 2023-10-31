@@ -4,7 +4,7 @@ namespace FileInfoTool.Models
 {
     internal class InfoRecord
     {
-        public const string RecordFileName = "Info.json";
+        public const string DefaultFileNameFormat = "{0}_Info.json";
 
         public required string RecordTimeUtc { get; set; }
 
