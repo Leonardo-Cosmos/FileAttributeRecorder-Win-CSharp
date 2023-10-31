@@ -52,7 +52,18 @@ namespace FileInfoTool.Info
             {
                 var subDirInfoRecords = dirInfoRecord.Directories ?? new List<DirectoryInfoRecord>();
                 var loadedSubDirInfoRecords = new List<DirectoryInfoRecord>();
-                foreach (var subDirectory in directory.GetDirectories())
+                DirectoryInfo[] subDirectories;
+                try
+                {
+                    subDirectories = directory.GetDirectories();
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine(ex.Message);
+                    dirInfoRecord.GetDirectoriesFailed = true;
+                    subDirectories = Array.Empty<DirectoryInfo>();
+                }
+                foreach (var subDirectory in subDirectories)
                 {
                     var subDirInfoRecord = subDirInfoRecords
                         .Find(infoRecord => infoRecord.Name == subDirectory.Name);
@@ -69,7 +80,18 @@ namespace FileInfoTool.Info
 
             var fileInfoRecords = dirInfoRecord.Files ?? new List<FileInfoRecord>();
             var loadedFileInfoRecords = new List<FileInfoRecord>();
-            foreach (var file in directory.GetFiles())
+            FileInfo[] files;
+            try
+            {
+                files = directory.GetFiles();
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(ex.Message);
+                dirInfoRecord.GetFilesFailed = true;
+                files = Array.Empty<FileInfo>();
+            }
+            foreach (var file in files)
             {
                 var fileInfoRecord = fileInfoRecords
                     .Find(infoRecord => infoRecord.Name == file.Name);
