@@ -69,7 +69,7 @@ namespace FileInfoTool.Info
                         .Find(infoRecord => infoRecord.Name == subDirectory.Name);
                     if (subDirInfoRecord != null)
                     {
-                        LoadInfoRecord(subDirectory, subDirInfoRecord, restore);
+                        Load(subDirectory, subDirInfoRecord, recursive, restore);
                         loadedSubDirInfoRecords.Add(subDirInfoRecord);
                     }
                 }

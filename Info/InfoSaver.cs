@@ -84,7 +84,7 @@ namespace FileInfoTool.Info
                 }
                 foreach (var subDirectory in subDirectories)
                 {
-                    var subDirInfoRecord = Save(subDirectory, recursive: true);
+                    var subDirInfoRecord = Save(subDirectory, recursive);
                     subDirInfoRecords.Add(subDirInfoRecord);
                 }
                 dirInfoRecord.Directories = subDirInfoRecords;
