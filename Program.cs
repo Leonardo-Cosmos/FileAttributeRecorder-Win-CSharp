@@ -1,36 +1,28 @@
 ﻿/* 2023/10/26 */
+using FileInfoTool.Info;
 
-string opearation;
-string dirPath;
-if (args.Length == 0)
+// Console.WriteLine($"[{string.Join(", ", args)}]");
+
+LaunchOption option;
+try
 {
-    Console.WriteLine("No operation specified.");
+    option = ConsoleArgsParser.ParseArgs(args);
+}
+catch (Exception ex)
+{
+    Console.Error.WriteLine(ex.Message);
     return;
 }
-else
-{
-    opearation = args[0];
-}
 
-if (args.Length > 1)
+switch (option.Mode)
 {
-    dirPath = args[1];
-}
-else
-{
-    dirPath = ".";
-}
-
-var fileInfoTool = new FileInfoTool.Info.FileInfoTool(dirPath);
-switch (opearation)
-{
-    case "-s":
-        fileInfoTool.SaveFileDate();
+    case Mode.Save:
+        FileInfoTool.Info.FileInfoTool.Save(option);
         break;
-    case "-r":
-        fileInfoTool.RestoreFileDate();
+    case Mode.Restore:
+        FileInfoTool.Info.FileInfoTool.Restore(option);
         break;
-    default:
-        Console.WriteLine("No valid operation specified.");
+    case Mode.Validate:
+        FileInfoTool.Info.FileInfoTool.Validate(option);
         break;
 }
