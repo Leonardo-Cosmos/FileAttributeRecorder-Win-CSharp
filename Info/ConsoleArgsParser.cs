@@ -10,7 +10,8 @@ namespace FileInfoTool.Info
         Validate,
     }
 
-    internal record LaunchOption(Mode Mode, string DirPath, string? InputFile, string? OutputFile, bool Recursive);
+    internal record LaunchOption(Mode Mode, string DirPath, string? InputFile, string? OutputFile,
+        InfoProperty[]? FilePropertyNames, InfoProperty[]? DirPropertyNames, bool Recursive);
 
     internal static class ConsoleArgsParser
     {
@@ -21,6 +22,22 @@ namespace FileInfoTool.Info
         private static readonly string[] outputFilePathKeys = new string[] { "-o", "-output" };
 
         private static readonly string[] recursiveKeys = new string[] { "-r", "-recursive" };
+
+        private static readonly string[] propertyKeys = new string[] { "-p", "-property" };
+
+        private static readonly string[] filePropertyKeys = new string[] { "-fp", "-file-property" };
+
+        private static readonly string[] dirPropertyKeys = new string[] { "-dp", "-dir-property" };
+
+        private const string creationTimePropertyValue = "c";
+
+        private const string lastWriteTimePropertyValue = "m";
+
+        private const string lastAccessPropertyValue = "a";
+
+        private const string sizePropertyValue = "s";
+
+        private const string wildcardPropertyValue = "*";
 
         /// <summary>
         /// Parses launch option from commande line arguments.
@@ -56,7 +73,8 @@ namespace FileInfoTool.Info
                 throw new ArgumentException("Mode is not specified.");
             }
 
-            var argDict = ConvertArgsToDict(args);
+            // Convert arguments to key value pairs, skipping the mode argument.
+            var argDict = ConvertArgsToDict(args.Skip(1));
 
             string? dirPath = FindArgValue(argDict, dirPathKeys);
             DirectoryInfo dir;
@@ -103,10 +121,40 @@ namespace FileInfoTool.Info
                 recursive = true;
             }
 
-            return new LaunchOption(mode.Value, dirPath, inputFilePath, outputFilePath, recursive);
+            string? propertyValue = FindArgValue(argDict, propertyKeys);
+            string? filePropertyValue = FindArgValue(argDict, filePropertyKeys);
+            string? dirPropertyValue = FindArgValue(argDict, dirPropertyKeys);
+            if (propertyValue != null)
+            {
+                filePropertyValue ??= propertyValue;
+                dirPropertyValue ??= propertyValue;
+            }
+
+            InfoProperty[]? fileProperties;
+            if (filePropertyValue != null)
+            {
+                fileProperties = ParsePropertyValue(filePropertyValue);
+            }
+            else
+            {
+                fileProperties = null;
+            }
+
+            InfoProperty[]? dirProperties;
+            if (dirPropertyValue != null)
+            {
+                dirProperties = ParsePropertyValue(dirPropertyValue);
+            }
+            else
+            {
+                dirProperties = null;
+            }
+
+            return new LaunchOption(mode.Value, dirPath, inputFilePath, outputFilePath,
+                fileProperties, dirProperties, recursive);
         }
 
-        private static Dictionary<string, string> ConvertArgsToDict(string[] args)
+        private static Dictionary<string, string> ConvertArgsToDict(IEnumerable<string> args)
         {
             return args.Aggregate(new Dictionary<string, string>(), (dict, arg) =>
             {
@@ -139,6 +187,42 @@ namespace FileInfoTool.Info
             {
                 return null;
             }
+        }
+
+        private static InfoProperty[] ParsePropertyValue(string propertyValue)
+        {
+            if (propertyValue.Contains(wildcardPropertyValue))
+            {
+                return Enum.GetValues<InfoProperty>();
+            }
+
+            List<InfoProperty> properyNames = new();
+            foreach (char valueChar in propertyValue)
+            {
+                var nameValue = valueChar.ToString().ToLower();
+                switch (nameValue)
+                {
+                    case creationTimePropertyValue:
+                        properyNames.Add(InfoProperty.CreationTime);
+                        break;
+
+                    case lastWriteTimePropertyValue:
+                        properyNames.Add(InfoProperty.LastWriteTime);
+                        break;
+
+                    case lastAccessPropertyValue:
+                        properyNames.Add(InfoProperty.LastAccessTime);
+                        break;
+
+                    case sizePropertyValue:
+                        properyNames.Add(InfoProperty.Size);
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+            return properyNames.ToArray();
         }
     }
 }

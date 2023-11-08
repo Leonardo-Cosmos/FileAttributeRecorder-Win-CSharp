@@ -1,12 +1,4 @@
 ﻿/* 2020/3/13 */
-using FileInfoTool.Models;
-using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FileInfoTool.Info
 {
@@ -14,18 +6,20 @@ namespace FileInfoTool.Info
     {
         public static void Save(LaunchOption option)
         {
-            new InfoSaver(option.DirPath, option.OutputFile!).Save(option.Recursive);
+            new InfoSaver(option.DirPath, option.OutputFile!,
+                option.FilePropertyNames, option.DirPropertyNames).Save(option.Recursive);
         }
 
         public static void Restore(LaunchOption option)
         {
-            new InfoLoader(option.DirPath, option.InputFile!).Load(option.Recursive, true);
+            new InfoLoader(option.DirPath, option.InputFile!, true,
+                option.FilePropertyNames, option.DirPropertyNames).Load(option.Recursive);
         }
 
         public static void Validate(LaunchOption option)
         {
-            new InfoLoader(option.DirPath, option.InputFile!).Load(option.Recursive, false);
+            new InfoLoader(option.DirPath, option.InputFile!, false,
+                option.FilePropertyNames, option.DirPropertyNames).Load(option.Recursive);
         }
-
     }
 }

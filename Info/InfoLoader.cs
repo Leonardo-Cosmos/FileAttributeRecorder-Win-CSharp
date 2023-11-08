@@ -11,15 +11,100 @@ namespace FileInfoTool.Info
 
         private readonly string infoFilePath;
 
-        public InfoLoader(string dirPath, string infoFilePath)
+        private readonly bool restore;
+
+        private readonly InfoProperty[] fileProperties;
+
+        private readonly bool loadFileCreationTime;
+
+        private readonly bool loadFileLastWriteTime;
+
+        private readonly bool loadFileLastAccessTime;
+
+        private readonly bool loadFileSize;
+
+        private readonly InfoProperty[] dirProperties;
+
+        private readonly bool loadDirCreationTime;
+
+        private readonly bool loadDirLastWriteTime;
+
+        private readonly bool loadDirLastAccessTime;
+
+        public InfoLoader(string dirPath, string infoFilePath, bool restore,
+            InfoProperty[]? fileProperties, InfoProperty[]? dirProperties)
         {
             this.dirPath = dirPath;
             this.infoFilePath = infoFilePath;
+            this.restore = restore;
+
+            if (fileProperties != null)
+            {
+                if (restore)
+                {
+                    this.fileProperties = InfoProperties.ValidRestoreFileProperties
+                        .Intersect(fileProperties)
+                        .ToArray();
+                }
+                else
+                {
+                    this.fileProperties = InfoProperties.ValidValidateFileProperties
+                        .Intersect(fileProperties)
+                        .ToArray();
+                }
+            }
+            else
+            {
+                if (restore)
+                {
+                    this.fileProperties = new InfoProperty[]
+                    {
+                        InfoProperty.CreationTime,
+                        InfoProperty.LastWriteTime,
+                    };
+                }
+                else
+                {
+                    this.fileProperties = new InfoProperty[]
+                    {
+                        InfoProperty.CreationTime,
+                        InfoProperty.LastWriteTime,
+                        InfoProperty.Size,
+                    };
+                }
+            }
+
+            if (dirProperties != null)
+            {
+                this.dirProperties = InfoProperties.ValidDirProperties
+                    .Intersect(dirProperties)
+                    .ToArray();
+            }
+            else
+            {
+                this.dirProperties = new InfoProperty[] {
+                    InfoProperty.CreationTime,
+                    InfoProperty.LastWriteTime,
+                };
+            }
+
+            loadFileCreationTime = this.fileProperties.Contains(InfoProperty.CreationTime);
+            loadFileLastWriteTime = this.fileProperties.Contains(InfoProperty.LastWriteTime);
+            loadFileLastAccessTime = this.fileProperties.Contains(InfoProperty.LastAccessTime);
+            loadFileSize = this.fileProperties.Contains(InfoProperty.Size);
+
+            loadDirCreationTime = this.dirProperties.Contains(InfoProperty.CreationTime);
+            loadDirLastWriteTime = this.dirProperties.Contains(InfoProperty.LastWriteTime);
+            loadDirLastAccessTime = this.dirProperties.Contains(InfoProperty.LastAccessTime);
         }
 
-        public void Load(bool recursive, bool restore)
+        public void Load(bool recursive)
         {
             Console.WriteLine($"Load file system info, directory: {dirPath}, info file: {infoFilePath}, recursive: {recursive}, restore: {restore}");
+            var filePropertyNames = fileProperties.Select(property => property.ToNameString());
+            Console.WriteLine($"File proerties: {string.Join(", ", filePropertyNames)}");
+            var dirPropertyNames = dirProperties.Select(property => property.ToNameString());
+            Console.WriteLine($"Directory properties: {string.Join(", ", dirPropertyNames)}");
 
             var directory = new DirectoryInfo(dirPath);
             if (!directory.Exists)
@@ -127,8 +212,26 @@ namespace FileInfoTool.Info
 
         private void LoadInfoRecord(FileSystemInfo info, FileSystemInfoRecord infoRecord, bool restore)
         {
+            bool loadCreationTime = false;
+            bool loadLastWriteTime = false;
+            bool loadLastAccessTime = false;
+            bool loadSize = false;
+            if (info is FileInfo)
+            {
+                loadCreationTime = loadFileCreationTime;
+                loadLastWriteTime = loadFileLastWriteTime;
+                loadLastAccessTime = loadFileLastAccessTime;
+                loadSize = loadFileSize;
+            }
+            else if (info is DirectoryInfo)
+            {
+                loadCreationTime = loadDirCreationTime;
+                loadLastWriteTime = loadDirLastWriteTime;
+                loadLastAccessTime = loadDirLastAccessTime;
+            }
+
             string? changedCreationTimeUtc = null;
-            var isCreationTimeChanged = ValidateISOString(info.CreationTimeUtc, infoRecord.CreationTimeUtc);
+            var isCreationTimeChanged = loadCreationTime && IsDateTimeChanged(info.CreationTimeUtc, infoRecord.CreationTimeUtc);
             if (isCreationTimeChanged)
             {
                 changedCreationTimeUtc = info.CreationTimeUtc.ToISOString();
@@ -139,7 +242,7 @@ namespace FileInfoTool.Info
             }
 
             string? changedLastWriteTimeUtc = null;
-            var isLastWriteTimeChanged = ValidateISOString(info.LastWriteTimeUtc, infoRecord.LastWriteTimeUtc);
+            var isLastWriteTimeChanged = loadLastWriteTime && IsDateTimeChanged(info.LastWriteTimeUtc, infoRecord.LastWriteTimeUtc);
             if (isLastWriteTimeChanged)
             {
                 changedLastWriteTimeUtc = info.LastWriteTimeUtc.ToISOString();
@@ -150,7 +253,7 @@ namespace FileInfoTool.Info
             }
 
             string? changedLastAccessTimeUtc = null;
-            var isLastAccessTimeChanged = ValidateISOString(info.LastAccessTimeUtc, infoRecord.LastAccessTimeUtc);
+            var isLastAccessTimeChanged = loadLastAccessTime && IsDateTimeChanged(info.LastAccessTimeUtc, infoRecord.LastAccessTimeUtc);
             if (isLastAccessTimeChanged)
             {
                 changedLastAccessTimeUtc = info.LastAccessTimeUtc.ToISOString();
@@ -162,10 +265,11 @@ namespace FileInfoTool.Info
 
             long? changedFileSize = null;
             bool isFileSizeChanged = false;
-            if (!restore && info is FileInfo file)
+            if (!restore && loadSize)
             {
+                var file = info as FileInfo;
                 var fileInfoRecord = infoRecord as FileInfoRecord;
-                if (file.Length != fileInfoRecord!.Size)
+                if (fileInfoRecord!.Size != null &&  file!.Length != fileInfoRecord!.Size)
                 {
                     isFileSizeChanged = true;
                     changedFileSize = file.Length;
@@ -183,7 +287,7 @@ namespace FileInfoTool.Info
             }
         }
 
-        private static bool ValidateISOString(DateTime dateTime, string? isoString)
+        private static bool IsDateTimeChanged(DateTime dateTime, string? isoString)
         {
             if (isoString == null)
             {

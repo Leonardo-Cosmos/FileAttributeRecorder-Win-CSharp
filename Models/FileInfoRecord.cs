@@ -4,6 +4,6 @@ namespace FileInfoTool.Models
 {
     internal class FileInfoRecord : FileSystemInfoRecord
     {
-        public long Size { get; set; }
+        public long? Size { get; set; }
     }
 }
