@@ -157,6 +157,10 @@ namespace FileInfoTool.Info
                         Load(subDirectory, subDirInfoRecord, recursive, restore);
                         loadedSubDirInfoRecords.Add(subDirInfoRecord);
                     }
+                    else
+                    {
+                        PrintUnknownInfo(subDirectory);
+                    }
                 }
 
                 var missedSubDirInfoRecords = subDirInfoRecords.Except(loadedSubDirInfoRecords);
@@ -185,12 +189,28 @@ namespace FileInfoTool.Info
                     LoadInfoRecord(file, fileInfoRecord, restore);
                     loadedFileInfoRecords.Add(fileInfoRecord);
                 }
+                else
+                {
+                    PrintUnknownInfo(file);
+                }
             }
 
             var missedFileInfoRecords = fileInfoRecords.Except(loadedFileInfoRecords);
             PrintMissedInfoRecords(directory, missedFileInfoRecords);
 
             LoadInfoRecord(directory, dirInfoRecord, restore);
+        }
+
+        private void PrintUnknownInfo(FileSystemInfo info)
+        {
+            if (info is FileInfo file)
+            {
+                Console.WriteLine($"Unknown file {file.GetRelativePath(dirPath)}");
+            }
+            else if (info is DirectoryInfo directory)
+            {
+                Console.WriteLine($"Unknown file {directory.GetRelativePath(dirPath)}");
+            }
         }
 
         private void PrintMissedInfoRecords(DirectoryInfo dirInfo, IEnumerable<FileSystemInfoRecord> infoRecords)
