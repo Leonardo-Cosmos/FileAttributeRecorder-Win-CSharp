@@ -1,5 +1,5 @@
-﻿using FileInfoTool.Models;
-/* 2023/10/26 */
+﻿/* 2023/10/26 */
+using FileInfoTool.Models;
 
 namespace FileInfoTool.Info
 {
@@ -8,10 +8,14 @@ namespace FileInfoTool.Info
         Save,
         Restore,
         Validate,
+        ExtractSub,
+        AddSub,
+        RemoveSub,
     }
 
     internal record LaunchOption(Mode Mode, string DirPath, string? InputFile, string? OutputFile,
-        InfoProperty[]? FilePropertyNames, InfoProperty[]? DirPropertyNames, bool Recursive);
+        InfoProperty[]? FilePropertyNames, InfoProperty[]? DirPropertyNames, bool Recursive,
+        string? BaseFile, string? RelativePath, string? SubFile, bool Overwrite);
 
     internal static class ConsoleArgsParser
     {
@@ -28,6 +32,14 @@ namespace FileInfoTool.Info
         private static readonly string[] filePropertyKeys = new string[] { "-fp", "-file-property" };
 
         private static readonly string[] dirPropertyKeys = new string[] { "-dp", "-dir-property" };
+
+        private static readonly string[] baseFilePathKeys = new string[] { "-base", "-base-info" };
+
+        private static readonly string[] relativePathKeys = new string[] { "-path", "-relative-path" };
+
+        private static readonly string[] subFilePathKeys = new string[] { "-sub", "-sub-info" };
+
+        private static readonly string[] overwriteKeys = new string[] { "-ow", "-over-write" };
 
         private const string creationTimePropertyValue = "c";
 
@@ -76,7 +88,7 @@ namespace FileInfoTool.Info
             // Convert arguments to key value pairs, skipping the mode argument.
             var argDict = ConvertArgsToDict(args.Skip(1));
 
-            string? dirPath = FindArgValue(argDict, dirPathKeys);
+            string? dirPath = TakeArgValue(argDict, dirPathKeys);
             DirectoryInfo dir;
             if (dirPath == null)
             {
@@ -102,13 +114,13 @@ namespace FileInfoTool.Info
                 return Path.Combine(dir.Parent.FullName, inputFileName);
             }
 
-            string? inputFilePath = FindArgValue(argDict, inputFilePathKeys);
+            string? inputFilePath = TakeArgValue(argDict, inputFilePathKeys);
             if (inputFilePath == null && (mode == Mode.Restore || mode == Mode.Validate))
             {
                 inputFilePath = GetDefaultInfoFilePath();
             }
 
-            string? outputFilePath = FindArgValue(argDict, outputFilePathKeys);
+            string? outputFilePath = TakeArgValue(argDict, outputFilePathKeys);
             if (outputFilePath == null && mode == Mode.Save)
             {
                 outputFilePath = GetDefaultInfoFilePath();
@@ -121,9 +133,9 @@ namespace FileInfoTool.Info
                 recursive = true;
             }
 
-            string? propertyValue = FindArgValue(argDict, propertyKeys);
-            string? filePropertyValue = FindArgValue(argDict, filePropertyKeys);
-            string? dirPropertyValue = FindArgValue(argDict, dirPropertyKeys);
+            string? propertyValue = TakeArgValue(argDict, propertyKeys);
+            string? filePropertyValue = TakeArgValue(argDict, filePropertyKeys);
+            string? dirPropertyValue = TakeArgValue(argDict, dirPropertyKeys);
             if (propertyValue != null)
             {
                 filePropertyValue ??= propertyValue;
@@ -150,8 +162,23 @@ namespace FileInfoTool.Info
                 dirProperties = null;
             }
 
+            string? baseFilePath = TakeArgValue(argDict, baseFilePathKeys);
+
+            string? relativePath = TakeArgValue(argDict, relativePathKeys);
+
+            string? subFilePath = TakeArgValue(argDict, subFilePathKeys);
+
+            var overwrite = TakeArgValue(argDict, overwriteKeys) != null;
+
+            if (argDict.Count > 0)
+            {
+                var unknownArgs = ConvertDictToArgs(argDict);
+                Console.WriteLine($"Unknown arguments: {string.Join(" ", unknownArgs)}");
+            }
+
             return new LaunchOption(mode.Value, dirPath, inputFilePath, outputFilePath,
-                fileProperties, dirProperties, recursive);
+                fileProperties, dirProperties, recursive,
+                baseFilePath, relativePath, subFilePath, overwrite);
         }
 
         private static Dictionary<string, string> ConvertArgsToDict(IEnumerable<string> args)
@@ -176,12 +203,21 @@ namespace FileInfoTool.Info
             });
         }
 
-        private static string? FindArgValue(Dictionary<string, string> argDict, string[] argKeys)
+        private static IEnumerable<string> ConvertDictToArgs(Dictionary<string, string> argDict)
+        {
+            return argDict.Keys
+                .Select(key => $"{key}={argDict[key]}")
+                .ToArray();
+        }
+
+        private static string? TakeArgValue(Dictionary<string, string> argDict, string[] argKeys)
         {
             var firstFoundKey = Array.Find(argKeys, argDict.ContainsKey);
             if (firstFoundKey != null)
             {
-                return argDict[firstFoundKey];
+                var argValue = argDict[firstFoundKey];
+                argDict.Remove(firstFoundKey);
+                return argValue;
             }
             else
             {

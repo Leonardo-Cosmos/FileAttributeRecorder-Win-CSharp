@@ -4,6 +4,10 @@ namespace FileInfoTool.Models
 {
     internal abstract class FileSystemInfoRecord
     {
+        /*
+         * Name is mandatory when save, but it cannot be declared as required
+         * in order to support initialization in generic method.
+         */
         public string? Name { get; set; }
 
         public string? CreationTimeUtc { get; set; }
