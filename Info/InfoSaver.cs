@@ -1,7 +1,7 @@
 ﻿/* 2023/10/27 */
 using FileInfoTool.Extensions;
+using FileInfoTool.Helpers;
 using FileInfoTool.Models;
-using Newtonsoft.Json;
 
 namespace FileInfoTool.Info
 {
@@ -20,6 +20,8 @@ namespace FileInfoTool.Info
         private readonly bool saveFileLastAccessTime;
 
         private readonly bool saveFileSize;
+
+        private readonly bool saveFileHash;
 
         private readonly InfoProperty[] dirProperties;
 
@@ -71,19 +73,28 @@ namespace FileInfoTool.Info
             saveFileLastWriteTime = this.fileProperties.Contains(InfoProperty.LastWriteTime);
             saveFileLastAccessTime = this.fileProperties.Contains(InfoProperty.LastAccessTime);
             saveFileSize = this.fileProperties.Contains(InfoProperty.Size);
+            saveFileHash = this.fileProperties.Contains(InfoProperty.Hash);
 
             saveDirCreationTime = this.dirProperties.Contains(InfoProperty.CreationTime);
             saveDirLastWriteTime = this.dirProperties.Contains(InfoProperty.LastWriteTime);
             saveDirLastAccessTime = this.dirProperties.Contains(InfoProperty.LastAccessTime);
         }
 
-        public void Save(bool recursive)
+        public void Save(bool recursive, bool overwrite)
         {
-            Console.WriteLine($"Save file system info, directory: {dirPath}, info file: {infoFilePath}, recursive: {recursive}");
             var filePropertyNames = fileProperties.Select(property => property.ToNameString());
-            Console.WriteLine($"File proerties: {string.Join(", ", filePropertyNames)}");
             var dirPropertyNames = dirProperties.Select(property => property.ToNameString());
-            Console.WriteLine($"Directory properties: {string.Join(", ", dirPropertyNames)}");
+
+            Console.WriteLine($"""
+                Save file system info
+                    directory: {dirPath}
+                    recursive: {recursive}
+                    info file: {infoFilePath}
+                    overwrite: {overwrite}
+                    File proerties: {string.Join(", ", filePropertyNames)}
+                    Directory properties: {string.Join(", ", dirPropertyNames)}
+
+                """);
 
             var directory = new DirectoryInfo(dirPath);
             if (!directory.Exists)
@@ -92,22 +103,17 @@ namespace FileInfoTool.Info
                 return;
             }
 
+            if (File.Exists(infoFilePath) && !overwrite)
+            {
+                Console.WriteLine($"Info file exists already, path: {infoFilePath}");
+                return;
+            }
+
             var dirInfoRecord = Save(directory, recursive);
 
-            var currentDateTime = DateTime.UtcNow;
-            var infoRecord = new InfoRecord()
-            {
-                Directory = dirInfoRecord,
-                RecordTimeUtc = currentDateTime.ToISOString(),
-                RecordTimeUtcTicks = currentDateTime.Ticks,
-            };
+            var infoRecord = InfoRecord.Create(dirInfoRecord);
 
-            string json = JsonConvert.SerializeObject(infoRecord, Formatting.Indented,
-                new JsonSerializerSettings
-                {
-                    DefaultValueHandling = DefaultValueHandling.Ignore
-                });
-            File.WriteAllText(infoFilePath, json);
+            InfoSerializer.Serialize(infoRecord, infoFilePath);
         }
 
         private DirectoryInfoRecord Save(DirectoryInfo directory, bool recursive)
@@ -165,12 +171,14 @@ namespace FileInfoTool.Info
             bool saveLastWriteTime = false;
             bool saveLastAccessTime = false;
             bool saveSize = false;
+            bool saveHash = false;
             if (info is FileInfo)
             {
                 saveCreationTime = saveFileCreationTime;
                 saveLastWriteTime = saveFileLastWriteTime;
                 saveLastAccessTime = saveFileLastAccessTime;
                 saveSize = saveFileSize;
+                saveHash = saveFileHash;
             }
             else if (info is DirectoryInfo)
             {
@@ -209,6 +217,21 @@ namespace FileInfoTool.Info
                 fileInfoRecord!.Size = file!.Length;
             }
 
+            if (saveHash)
+            {
+                var file = info as FileInfo;
+                var fileInfoRecord = infoRecord as FileInfoRecord;
+                var fileLength = file!.Length;
+
+                ProgressPrinter progressPrinter = new($"Hash {file.GetRelativePath(dirPath)}: {{0}}%");
+                fileInfoRecord!.SHA512 = HashComputer.ComputeHash(file.FullName, new Progress<long>(totalReadLength =>
+                {
+                    var percentage = 100 * totalReadLength / fileLength;
+                    progressPrinter.Update(percentage.ToString());
+                }));
+                progressPrinter.End();
+            }
+
             PrintSavedInfoRecord(info, infoRecord);
             return infoRecord;
         }
@@ -226,19 +249,26 @@ namespace FileInfoTool.Info
             Console.WriteLine($" {info.GetRelativePath(dirPath)}");
             if (infoRecord.CreationTimeUtc != null)
             {
-                Console.WriteLine($"  creation time: {infoRecord.CreationTimeUtc}");
+                Console.WriteLine($"  date created: {infoRecord.CreationTimeUtc}");
             }
-            if (infoRecord.LastWriteTimeUtc !=null)
+            if (infoRecord.LastWriteTimeUtc != null)
             {
-                Console.WriteLine($"  last write time: {infoRecord.LastWriteTimeUtc},");
+                Console.WriteLine($"  date modified: {infoRecord.LastWriteTimeUtc}");
             }
             if (infoRecord.LastAccessTimeUtc != null)
             {
-                Console.WriteLine($"  last access time: {infoRecord.LastAccessTimeUtc}");
+                Console.WriteLine($"  date accessed: {infoRecord.LastAccessTimeUtc}");
             }
-            if (infoRecord is FileInfoRecord fileInfoRecord && fileInfoRecord.Size != null)
+            if (infoRecord is FileInfoRecord fileInfoRecord)
             {
-                Console.WriteLine($"  size: {fileInfoRecord.Size}");
+                if (fileInfoRecord.Size != null)
+                {
+                    Console.WriteLine($"  size: {fileInfoRecord.Size}");
+                }
+                if (fileInfoRecord.SHA512 != null)
+                {
+                    Console.WriteLine($"  SHA512: {fileInfoRecord.SHA512}");
+                }
             }
         }
     }

@@ -5,5 +5,7 @@ namespace FileInfoTool.Models
     internal class FileInfoRecord : FileSystemInfoRecord
     {
         public long? Size { get; set; }
+
+        public string? SHA512 { get; set; }
     }
 }

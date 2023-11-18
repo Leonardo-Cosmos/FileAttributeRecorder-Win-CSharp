@@ -32,7 +32,7 @@ namespace FileInfoTool.Info
         private static void Save(LaunchOption option)
         {
             new InfoSaver(option.DirPath, option.OutputFile!,
-                option.FilePropertyNames, option.DirPropertyNames).Save(option.Recursive);
+                option.FilePropertyNames, option.DirPropertyNames).Save(option.Recursive, option.Overwrite);
         }
 
         private static void Restore(LaunchOption option)

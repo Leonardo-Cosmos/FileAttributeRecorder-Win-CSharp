@@ -1,7 +1,7 @@
 ﻿/* 2023/10/26 */
 using FileInfoTool.Extensions;
+using FileInfoTool.Helpers;
 using FileInfoTool.Models;
-using Newtonsoft.Json;
 
 namespace FileInfoTool.Info
 {
@@ -22,6 +22,8 @@ namespace FileInfoTool.Info
         private readonly bool loadFileLastAccessTime;
 
         private readonly bool loadFileSize;
+
+        private readonly bool loadFileHash;
 
         private readonly InfoProperty[] dirProperties;
 
@@ -92,6 +94,7 @@ namespace FileInfoTool.Info
             loadFileLastWriteTime = this.fileProperties.Contains(InfoProperty.LastWriteTime);
             loadFileLastAccessTime = this.fileProperties.Contains(InfoProperty.LastAccessTime);
             loadFileSize = this.fileProperties.Contains(InfoProperty.Size);
+            loadFileHash = this.fileProperties.Contains(InfoProperty.Hash);
 
             loadDirCreationTime = this.dirProperties.Contains(InfoProperty.CreationTime);
             loadDirLastWriteTime = this.dirProperties.Contains(InfoProperty.LastWriteTime);
@@ -100,11 +103,19 @@ namespace FileInfoTool.Info
 
         public void Load(bool recursive)
         {
-            Console.WriteLine($"Load file system info, directory: {dirPath}, info file: {infoFilePath}, recursive: {recursive}, restore: {restore}");
             var filePropertyNames = fileProperties.Select(property => property.ToNameString());
-            Console.WriteLine($"File proerties: {string.Join(", ", filePropertyNames)}");
             var dirPropertyNames = dirProperties.Select(property => property.ToNameString());
-            Console.WriteLine($"Directory properties: {string.Join(", ", dirPropertyNames)}");
+
+            Console.WriteLine($"""
+                Load file system info
+                    restore: {restore},
+                    directory: {dirPath}
+                    recursive: {recursive}
+                    info file: {infoFilePath}
+                    File proerties: {string.Join(", ", filePropertyNames)}
+                    Directory properties: {string.Join(", ", dirPropertyNames)}
+
+                """);
 
             var directory = new DirectoryInfo(dirPath);
             if (!directory.Exists)
@@ -119,11 +130,10 @@ namespace FileInfoTool.Info
                 return;
             }
 
-            var json = File.ReadAllText(infoFilePath);
-            var infoRecord = JsonConvert.DeserializeObject<InfoRecord>(json);
+            var infoRecord = InfoSerializer.Deserialize(infoFilePath);
             if (infoRecord == null)
             {
-                Console.WriteLine("Invalid info file");
+                Console.WriteLine($"Invalid info file, path: {infoFilePath}");
                 return;
             }
 
@@ -236,12 +246,14 @@ namespace FileInfoTool.Info
             bool loadLastWriteTime = false;
             bool loadLastAccessTime = false;
             bool loadSize = false;
+            bool loadHash = false;
             if (info is FileInfo)
             {
                 loadCreationTime = loadFileCreationTime;
                 loadLastWriteTime = loadFileLastWriteTime;
                 loadLastAccessTime = loadFileLastAccessTime;
                 loadSize = loadFileSize;
+                loadHash = loadFileHash;
             }
             else if (info is DirectoryInfo)
             {
@@ -289,21 +301,49 @@ namespace FileInfoTool.Info
             {
                 var file = info as FileInfo;
                 var fileInfoRecord = infoRecord as FileInfoRecord;
-                if (fileInfoRecord!.Size != null &&  file!.Length != fileInfoRecord!.Size)
+                if (fileInfoRecord!.Size != null && file!.Length != fileInfoRecord!.Size)
                 {
                     isFileSizeChanged = true;
                     changedFileSize = file.Length;
                 }
             }
 
+            string? changedFileSHA512 = null;
+            bool isFileHashChanged = false;
+            if (!restore && loadHash)
+            {
+                var file = info as FileInfo;
+                var fileInfoRecord = infoRecord as FileInfoRecord;
+
+                if (fileInfoRecord!.SHA512 != null)
+                {
+                    var fileLength = file!.Length;
+
+                    ProgressPrinter progressPrinter = new($"Hash {file.GetRelativePath(dirPath)}: {{0}}%");
+                    var sha512 = HashComputer.ComputeHash(file.FullName, new Progress<long>(totalReadLength =>
+                    {
+                        var percentage = 100 * totalReadLength / fileLength;
+                        progressPrinter.Update(percentage.ToString());
+                    }));
+                    progressPrinter.End();
+
+                    if (fileInfoRecord.SHA512 != sha512)
+                    {
+                        isFileHashChanged = true;
+                        changedFileSHA512 = sha512;
+                    }
+                }
+            }
+
             if (isCreationTimeChanged || isLastWriteTimeChanged || isLastAccessTimeChanged
-                || isFileSizeChanged)
+                || isFileSizeChanged || isFileHashChanged)
             {
                 PrintLoadedInfoRecord(info, infoRecord, restore,
                     changedCreationTimeUtc,
                     changedLastWriteTimeUtc,
                     changedLastAccessTimeUtc,
-                    changedFileSize);
+                    changedFileSize,
+                    changedFileSHA512);
             }
         }
 
@@ -323,7 +363,8 @@ namespace FileInfoTool.Info
             string? changedCreationTimeUtc,
             string? changedLastWriteTimeUtc,
             string? changedLastAccessTimeUtc,
-            long? changedFileSize)
+            long? changedFileSize,
+            string? changedFileSHA512)
         {
             if (restore)
             {
@@ -346,20 +387,25 @@ namespace FileInfoTool.Info
             Console.WriteLine($" {info.GetRelativePath(dirPath)}");
             if (changedCreationTimeUtc != null)
             {
-                Console.WriteLine($"  creation time: {infoRecord.CreationTimeUtc} -> {changedCreationTimeUtc}");
+                Console.WriteLine($"  date created: {infoRecord.CreationTimeUtc} -> {changedCreationTimeUtc}");
             }
             if (changedLastWriteTimeUtc != null)
             {
-                Console.WriteLine($"  last write time: {infoRecord.LastWriteTimeUtc} -> {changedLastWriteTimeUtc},");
+                Console.WriteLine($"  date modified: {infoRecord.LastWriteTimeUtc} -> {changedLastWriteTimeUtc}");
             }
             if (changedLastAccessTimeUtc != null)
             {
-                Console.WriteLine($"  last access time: {infoRecord.LastAccessTimeUtc} -> {changedLastAccessTimeUtc}");
+                Console.WriteLine($"  date accessed: {infoRecord.LastAccessTimeUtc} -> {changedLastAccessTimeUtc}");
             }
             if (changedFileSize != null)
             {
                 var fileInfoRecord = infoRecord as FileInfoRecord;
                 Console.WriteLine($"  size: {fileInfoRecord!.Size} -> {changedFileSize}");
+            }
+            if (changedFileSHA512 != null)
+            {
+                var fileInfoRecord = infoRecord as FileInfoRecord;
+                Console.WriteLine($"  SHA512: {fileInfoRecord!.SHA512} -> {changedFileSHA512}");
             }
         }
     }

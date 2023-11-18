@@ -26,6 +26,11 @@ namespace FileInfoTool.Info
         /// File size
         /// </summary>
         Size,
+
+        /// <summary>
+        /// Hash of file content
+        /// </summary>
+        Hash,
     }
 
     internal static class InfoProperties
@@ -36,6 +41,7 @@ namespace FileInfoTool.Info
             InfoProperty.LastWriteTime,
             InfoProperty.LastAccessTime,
             InfoProperty.Size,
+            InfoProperty.Hash,
         };
 
         internal static readonly InfoProperty[] ValidValidateFileProperties = new InfoProperty[]
@@ -44,6 +50,7 @@ namespace FileInfoTool.Info
             InfoProperty.LastWriteTime,
             InfoProperty.LastAccessTime,
             InfoProperty.Size,
+            InfoProperty.Hash,
         };
 
         internal static readonly InfoProperty[] ValidRestoreFileProperties = new InfoProperty[]
@@ -71,6 +78,7 @@ namespace FileInfoTool.Info
                 InfoProperty.LastWriteTime => "Date modified",
                 InfoProperty.LastAccessTime => "Date accessed",
                 InfoProperty.Size => "Size",
+                InfoProperty.Hash => "Hash",
                 _ => "Unknown",
             };
             return name;

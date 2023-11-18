@@ -27,11 +27,11 @@ namespace FileInfoTool.Info
 
         private static readonly string[] recursiveKeys = new string[] { "-r", "-recursive" };
 
-        private static readonly string[] propertyKeys = new string[] { "-p", "-property" };
+        private static readonly string[] propertyKeys = new string[] { "-prop", "-property" };
 
-        private static readonly string[] filePropertyKeys = new string[] { "-fp", "-file-property" };
+        private static readonly string[] filePropertyKeys = new string[] { "-fprop", "-file-prop", "-file-property" };
 
-        private static readonly string[] dirPropertyKeys = new string[] { "-dp", "-dir-property" };
+        private static readonly string[] dirPropertyKeys = new string[] { "-dprop", "-dir-prop", "-dir-property" };
 
         private static readonly string[] baseFilePathKeys = new string[] { "-base", "-base-info" };
 
@@ -48,6 +48,8 @@ namespace FileInfoTool.Info
         private const string lastAccessPropertyValue = "a";
 
         private const string sizePropertyValue = "s";
+
+        private const string hashPropertyValue = "h";
 
         private const string wildcardPropertyValue = "*";
 
@@ -126,12 +128,7 @@ namespace FileInfoTool.Info
                 outputFilePath = GetDefaultInfoFilePath();
             }
 
-            bool recursive = false;
-            var foundRecursiveKey = Array.Find(recursiveKeys, argDict.ContainsKey);
-            if (foundRecursiveKey != null)
-            {
-                recursive = true;
-            }
+            var recursive = TakeArgValue(argDict, recursiveKeys) != null;
 
             string? propertyValue = TakeArgValue(argDict, propertyKeys);
             string? filePropertyValue = TakeArgValue(argDict, filePropertyKeys);
@@ -232,33 +229,37 @@ namespace FileInfoTool.Info
                 return Enum.GetValues<InfoProperty>();
             }
 
-            List<InfoProperty> properyNames = new();
+            List<InfoProperty> propertyNames = new();
             foreach (char valueChar in propertyValue)
             {
                 var nameValue = valueChar.ToString().ToLower();
                 switch (nameValue)
                 {
                     case creationTimePropertyValue:
-                        properyNames.Add(InfoProperty.CreationTime);
+                        propertyNames.Add(InfoProperty.CreationTime);
                         break;
 
                     case lastWriteTimePropertyValue:
-                        properyNames.Add(InfoProperty.LastWriteTime);
+                        propertyNames.Add(InfoProperty.LastWriteTime);
                         break;
 
                     case lastAccessPropertyValue:
-                        properyNames.Add(InfoProperty.LastAccessTime);
+                        propertyNames.Add(InfoProperty.LastAccessTime);
                         break;
 
                     case sizePropertyValue:
-                        properyNames.Add(InfoProperty.Size);
+                        propertyNames.Add(InfoProperty.Size);
+                        break;
+
+                    case hashPropertyValue:
+                        propertyNames.Add(InfoProperty.Hash);
                         break;
 
                     default:
                         break;
                 }
             }
-            return properyNames.ToArray();
+            return propertyNames.ToArray();
         }
     }
 }
