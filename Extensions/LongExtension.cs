@@ -61,7 +61,7 @@ namespace FileInfoTool.Extensions
 
         internal static string ToByteDetailString(this long value)
         {
-            return $"{value.ToByteString()} ({value.ToGroupString()}) bytes";
+            return $"{value.ToByteString()} ({value.ToGroupString()} bytes)";
         }
     }
 }
