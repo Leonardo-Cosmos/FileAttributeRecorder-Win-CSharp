@@ -6,19 +6,24 @@ namespace FileInfoTool.Helpers
     {
         private readonly string format;
 
-        private bool started = false;
+        private volatile bool started = false;
 
-        private int maxProgressLength = 0;
+        private volatile bool ended = false;
+
+        private int lastProgressLength = 0;
+
+        private int startCursorTop = 0;
 
         public ProgressPrinter(string format)
         {
             this.format = format;
         }
 
-        private static void Revert()
+        private void MoveToHead()
         {
             //Console.SetCursorPosition(0, Console.CursorTop - 1);
-            Console.Write("\r");
+            //Console.Write("\r");
+            Console.SetCursorPosition(0, startCursorTop);
         }
 
         private static void Print(string value)
@@ -27,45 +32,69 @@ namespace FileInfoTool.Helpers
             Console.Write(value);
         }
 
-        private string FormatProgress(string progress)
+        private void EraseLine()
         {
-            var formattedProgress = string.Format(format, progress);
-            if (formattedProgress.Length > maxProgressLength)
-            {
-                maxProgressLength = formattedProgress.Length;
-            }
-            return formattedProgress;
+            MoveToHead();
+            var eraseText = new string(' ', Console.WindowWidth);
+            Print(eraseText);
         }
 
-        public void Start(string progress)
+        private string FormatProgress(params string[] progressValues)
+        {
+            var progress = string.Format(format, progressValues);
+            if (progress.Length > Console.WindowWidth)
+            {
+                return progress[..Console.WindowWidth];
+            }
+            return progress;
+        }
+
+        public void Start(params string[] progressValues)
         {
             started = true;
-            Print(FormatProgress(progress));
+
+            (_, startCursorTop) = Console.GetCursorPosition();
+
+            var progressText = FormatProgress(progressValues);
+            Print(progressText);
+
+            lastProgressLength = progressText.Length;
         }
 
-        public void Update(string progress)
+        public void Update(params string[] progressValues)
         {
+            if (ended)
+            {
+                return;
+            }
+
             if (started)
             {
-                Revert();
-                Print(FormatProgress(progress));
+                var progressText = FormatProgress(progressValues);
+                if (progressText.Length < lastProgressLength)
+                {
+                    EraseLine();
+                }
+
+                MoveToHead();
+                Print(progressText);
+
+                lastProgressLength = progressText.Length;
             }
             else
             {
-                Start(progress);
+                Start(progressValues);
             }
         }
 
         public void End()
         {
+            ended = true;
+
             if (started)
             {
-                Revert();
-
-                var eraseText = new string(' ', maxProgressLength * 2);
-                Print(eraseText);
-
-                Revert();
+                EraseLine();
+                MoveToHead();
             }
         }
     }

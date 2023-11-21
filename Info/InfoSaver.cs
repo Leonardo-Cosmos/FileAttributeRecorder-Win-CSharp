@@ -212,23 +212,22 @@ namespace FileInfoTool.Info
 
             if (saveSize)
             {
-                var file = info as FileInfo;
-                var fileInfoRecord = infoRecord as FileInfoRecord;
-                fileInfoRecord!.Size = file!.Length;
+                FileInfo file = (info as FileInfo)!;
+                FileInfoRecord fileInfoRecord = (infoRecord as FileInfoRecord)!;
+                fileInfoRecord.Size = file.Length;
             }
 
             if (saveHash)
             {
-                var file = info as FileInfo;
-                var fileInfoRecord = infoRecord as FileInfoRecord;
-                var fileLength = file!.Length;
+                FileInfo file = (info as FileInfo)!;
+                FileInfoRecord fileInfoRecord = (infoRecord as FileInfoRecord)!;
 
-                ProgressPrinter progressPrinter = new($"Hash {file.GetRelativePath(dirPath)}: {{0}}%");
-                fileInfoRecord!.SHA512 = HashComputer.ComputeHash(file.FullName, new Progress<long>(totalReadLength =>
+                ProgressPrinter progressPrinter = new("Hash {0}: {1}, {2}/s");
+                fileInfoRecord.SHA512 = HashComputer.ComputeHash(file.FullName, hashProgress =>
                 {
-                    var percentage = 100 * totalReadLength / fileLength;
-                    progressPrinter.Update(percentage.ToString());
-                }));
+                    progressPrinter.Update(file.GetRelativePath(dirPath),
+                        hashProgress.Percentage, hashProgress.LengthPerSecond);
+                });
                 progressPrinter.End();
             }
 
@@ -263,7 +262,7 @@ namespace FileInfoTool.Info
             {
                 if (fileInfoRecord.Size != null)
                 {
-                    Console.WriteLine($"  size: {fileInfoRecord.Size}");
+                    Console.WriteLine($"  size: {fileInfoRecord.Size?.ToByteDetailString()}");
                 }
                 if (fileInfoRecord.SHA512 != null)
                 {

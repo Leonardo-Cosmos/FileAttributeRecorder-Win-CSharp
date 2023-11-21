@@ -299,9 +299,9 @@ namespace FileInfoTool.Info
             bool isFileSizeChanged = false;
             if (!restore && loadSize)
             {
-                var file = info as FileInfo;
-                var fileInfoRecord = infoRecord as FileInfoRecord;
-                if (fileInfoRecord!.Size != null && file!.Length != fileInfoRecord!.Size)
+                FileInfo file = (info as FileInfo)!;
+                FileInfoRecord fileInfoRecord = (infoRecord as FileInfoRecord)!;
+                if (fileInfoRecord.Size != null && file.Length != fileInfoRecord.Size)
                 {
                     isFileSizeChanged = true;
                     changedFileSize = file.Length;
@@ -312,19 +312,17 @@ namespace FileInfoTool.Info
             bool isFileHashChanged = false;
             if (!restore && loadHash)
             {
-                var file = info as FileInfo;
-                var fileInfoRecord = infoRecord as FileInfoRecord;
+                FileInfo file = (info as FileInfo)!;
+                FileInfoRecord fileInfoRecord = (infoRecord as FileInfoRecord)!;
 
-                if (fileInfoRecord!.SHA512 != null)
+                if (fileInfoRecord.SHA512 != null)
                 {
-                    var fileLength = file!.Length;
-
-                    ProgressPrinter progressPrinter = new($"Hash {file.GetRelativePath(dirPath)}: {{0}}%");
-                    var sha512 = HashComputer.ComputeHash(file.FullName, new Progress<long>(totalReadLength =>
+                    ProgressPrinter progressPrinter = new("Hash {0}: {1}, {2}/s");
+                    var sha512 = HashComputer.ComputeHash(file.FullName, hashProgress =>
                     {
-                        var percentage = 100 * totalReadLength / fileLength;
-                        progressPrinter.Update(percentage.ToString());
-                    }));
+                        progressPrinter.Update(file.GetRelativePath(dirPath),
+                            hashProgress.Percentage, hashProgress.LengthPerSecond);
+                    });
                     progressPrinter.End();
 
                     if (fileInfoRecord.SHA512 != sha512)
@@ -397,15 +395,16 @@ namespace FileInfoTool.Info
             {
                 Console.WriteLine($"  date accessed: {infoRecord.LastAccessTimeUtc} -> {changedLastAccessTimeUtc}");
             }
-            if (changedFileSize != null)
+            if (infoRecord is FileInfoRecord fileInfoRecord)
             {
-                var fileInfoRecord = infoRecord as FileInfoRecord;
-                Console.WriteLine($"  size: {fileInfoRecord!.Size} -> {changedFileSize}");
-            }
-            if (changedFileSHA512 != null)
-            {
-                var fileInfoRecord = infoRecord as FileInfoRecord;
-                Console.WriteLine($"  SHA512: {fileInfoRecord!.SHA512} -> {changedFileSHA512}");
+                if (changedFileSize != null)
+                {
+                    Console.WriteLine($"  size: {fileInfoRecord!.Size?.ToByteDetailString()} -> {changedFileSize?.ToByteDetailString()}");
+                }
+                if (changedFileSHA512 != null)
+                {
+                    Console.WriteLine($"  SHA512: {fileInfoRecord.SHA512} -> {changedFileSHA512}");
+                }
             }
         }
     }
