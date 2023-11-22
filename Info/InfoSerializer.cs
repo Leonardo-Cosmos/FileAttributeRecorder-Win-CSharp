@@ -1,18 +1,26 @@
 ﻿/* 2023/11/16 */
 using FileInfoTool.Models;
-using Newtonsoft.Json;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace FileInfoTool.Info
 {
     internal static class InfoSerializer
     {
+        private static readonly JsonSerializerOptions options = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            WriteIndented = true,
+            PropertyNameCaseInsensitive = true,
+        };
+
         internal static void Serialize(InfoRecord infoRecord, string infoFilePath)
         {
-            string json = JsonConvert.SerializeObject(infoRecord, Formatting.Indented,
-                new JsonSerializerSettings
-                {
-                    DefaultValueHandling = DefaultValueHandling.Ignore
-                });
+            var json = JsonSerializer.Serialize(infoRecord, options: options);
+
             File.WriteAllText(infoFilePath, json);
 
             Console.WriteLine();
@@ -28,7 +36,7 @@ namespace FileInfoTool.Info
             Console.WriteLine($"Read from info file: {infoFilePath}");
             Console.WriteLine();
 
-            var infoRecord = JsonConvert.DeserializeObject<InfoRecord>(json);
+            var infoRecord = JsonSerializer.Deserialize<InfoRecord>(json, options: options);
             return infoRecord;
         }
     }
