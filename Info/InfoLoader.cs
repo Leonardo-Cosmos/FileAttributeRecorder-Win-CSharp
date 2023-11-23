@@ -33,6 +33,22 @@ namespace FileInfoTool.Info
 
         private readonly bool loadDirLastAccessTime;
 
+        private int loadedFileCount;
+
+        private int loadedDirectoryCount;
+
+        private int changedFileCount;
+
+        private int changedDirectoryCount;
+
+        private int missingFileCount;
+
+        private int missingDirectoryCount;
+
+        private int unknownFileCount;
+
+        private int unknownDirectoryCount;
+
         public InfoLoader(string dirPath, string infoFilePath, bool restore,
             InfoProperty[]? fileProperties, InfoProperty[]? dirProperties)
         {
@@ -137,7 +153,29 @@ namespace FileInfoTool.Info
                 return;
             }
 
+            loadedFileCount = 0;
+            loadedDirectoryCount = 0;
+            changedFileCount = 0;
+            changedDirectoryCount = 0;
+            missingFileCount = 0;
+            missingDirectoryCount = 0;
+            unknownFileCount = 0;
+            unknownDirectoryCount = 0;
             Load(directory, infoRecord.Directory, recursive, restore);
+            Console.WriteLine($"""
+                Loaded
+                    File: {loadedFileCount}
+                    Directory: {loadedDirectoryCount}
+                Changed
+                    File: {changedFileCount}
+                    Directory: {changedDirectoryCount}
+                Missing
+                    File: {missingFileCount}
+                    Directory: {missingDirectoryCount}
+                Unknown
+                    File: {unknownFileCount}
+                    Directory: {unknownDirectoryCount}
+                """);
         }
 
         private void Load(DirectoryInfo directory, DirectoryInfoRecord dirInfoRecord,
@@ -173,8 +211,8 @@ namespace FileInfoTool.Info
                     }
                 }
 
-                var missedSubDirInfoRecords = subDirInfoRecords.Except(loadedSubDirInfoRecords);
-                PrintMissedInfoRecords(directory, missedSubDirInfoRecords);
+                var missingSubDirInfoRecords = subDirInfoRecords.Except(loadedSubDirInfoRecords);
+                PrintMissingInfoRecords(directory, missingSubDirInfoRecords);
             }
 
             var fileInfoRecords = dirInfoRecord.Files ?? new List<FileInfoRecord>();
@@ -205,8 +243,8 @@ namespace FileInfoTool.Info
                 }
             }
 
-            var missedFileInfoRecords = fileInfoRecords.Except(loadedFileInfoRecords);
-            PrintMissedInfoRecords(directory, missedFileInfoRecords);
+            var missingFileInfoRecords = fileInfoRecords.Except(loadedFileInfoRecords);
+            PrintMissingInfoRecords(directory, missingFileInfoRecords);
 
             LoadInfoRecord(directory, dirInfoRecord, restore);
         }
@@ -216,26 +254,30 @@ namespace FileInfoTool.Info
             if (info is FileInfo file)
             {
                 Console.WriteLine($"Unknown file {file.GetRelativePath(dirPath)}");
+                unknownFileCount++;
             }
             else if (info is DirectoryInfo directory)
             {
-                Console.WriteLine($"Unknown file {directory.GetRelativePath(dirPath)}");
+                Console.WriteLine($"Unknown directory {directory.GetRelativePath(dirPath)}");
+                unknownDirectoryCount++;
             }
         }
 
-        private void PrintMissedInfoRecords(DirectoryInfo dirInfo, IEnumerable<FileSystemInfoRecord> infoRecords)
+        private void PrintMissingInfoRecords(DirectoryInfo dirInfo, IEnumerable<FileSystemInfoRecord> infoRecords)
         {
             foreach (var infoRecord in infoRecords)
             {
                 if (infoRecord is FileInfoRecord)
                 {
                     var file = new FileInfo(Path.Combine(dirInfo.FullName, infoRecord.Name ?? "*"));
-                    Console.WriteLine($"Missed file {file.GetRelativePath(dirPath)}");
+                    Console.WriteLine($"Missing file {file.GetRelativePath(dirPath)}");
+                    missingFileCount++;
                 }
                 else if (infoRecord is DirectoryInfoRecord)
                 {
                     var subDir = new DirectoryInfo(Path.Combine(dirInfo.FullName, infoRecord.Name ?? "*"));
-                    Console.WriteLine($"Missed directory: {subDir.GetRelativePath(dirPath)}");
+                    Console.WriteLine($"Missing directory: {subDir.GetRelativePath(dirPath)}");
+                    missingDirectoryCount++;
                 }
             }
         }
@@ -254,12 +296,16 @@ namespace FileInfoTool.Info
                 loadLastAccessTime = loadFileLastAccessTime;
                 loadSize = loadFileSize;
                 loadHash = loadFileHash;
+
+                loadedFileCount++;
             }
             else if (info is DirectoryInfo)
             {
                 loadCreationTime = loadDirCreationTime;
                 loadLastWriteTime = loadDirLastWriteTime;
                 loadLastAccessTime = loadDirLastAccessTime;
+
+                loadedDirectoryCount++;
             }
 
             string? changedCreationTimeUtc = null;
@@ -317,11 +363,11 @@ namespace FileInfoTool.Info
 
                 if (fileInfoRecord.SHA512 != null)
                 {
-                    ProgressPrinter progressPrinter = new("Hash {0}: {1}, {2}/s");
+                    Console.WriteLine($"Hash {file.GetRelativePath(dirPath)}");
+                    ProgressPrinter progressPrinter = new("{0}, {1}/s");
                     var sha512 = HashComputer.ComputeHash(file.FullName, hashProgress =>
                     {
-                        progressPrinter.Update(file.GetRelativePath(dirPath),
-                            hashProgress.Percentage, hashProgress.LengthPerSecond);
+                        progressPrinter.Update(hashProgress.Percentage, hashProgress.LengthPerSecond);
                     });
                     progressPrinter.End();
 
@@ -333,16 +379,15 @@ namespace FileInfoTool.Info
                 }
             }
 
-            if (isCreationTimeChanged || isLastWriteTimeChanged || isLastAccessTimeChanged
-                || isFileSizeChanged || isFileHashChanged)
-            {
-                PrintLoadedInfoRecord(info, infoRecord, restore,
-                    changedCreationTimeUtc,
-                    changedLastWriteTimeUtc,
-                    changedLastAccessTimeUtc,
-                    changedFileSize,
-                    changedFileSHA512);
-            }
+            var isChanged = isCreationTimeChanged || isLastWriteTimeChanged || isLastAccessTimeChanged
+                || isFileSizeChanged || isFileHashChanged;
+
+            PrintLoadedInfoRecord(info, infoRecord, restore, isChanged,
+                changedCreationTimeUtc,
+                changedLastWriteTimeUtc,
+                changedLastAccessTimeUtc,
+                changedFileSize,
+                changedFileSHA512);
         }
 
         private static bool IsDateTimeChanged(DateTime dateTime, string? isoString)
@@ -357,29 +402,38 @@ namespace FileInfoTool.Info
             }
         }
 
-        private void PrintLoadedInfoRecord(FileSystemInfo info, FileSystemInfoRecord infoRecord, bool restore,
+        private void PrintLoadedInfoRecord(FileSystemInfo info, FileSystemInfoRecord infoRecord, bool restore, bool isChanged,
             string? changedCreationTimeUtc,
             string? changedLastWriteTimeUtc,
             string? changedLastAccessTimeUtc,
             long? changedFileSize,
             string? changedFileSHA512)
         {
-            if (restore)
+            if (isChanged)
             {
-                Console.Write("Restored");
+                if (restore)
+                {
+                    Console.Write("Restored");
+                }
+                else
+                {
+                    Console.Write("Detected");
+                }
             }
             else
             {
-                Console.Write("Detected");
+                Console.Write("Same");
             }
 
             if (infoRecord is FileInfoRecord)
             {
                 Console.Write(" file");
+                changedFileCount++;
             }
             else if (infoRecord is DirectoryInfoRecord)
             {
                 Console.Write(" directory");
+                changedDirectoryCount++;
             }
 
             Console.WriteLine($" {info.GetRelativePath(dirPath)}");

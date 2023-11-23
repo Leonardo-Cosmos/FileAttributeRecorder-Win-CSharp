@@ -12,7 +12,7 @@ namespace FileInfoTool.Helpers
 
         private int lastProgressLength = 0;
 
-        private int startCursorTop = 0;
+        //private int startCursorTop = 0;
 
         public ProgressPrinter(string format)
         {
@@ -22,8 +22,8 @@ namespace FileInfoTool.Helpers
         private void MoveToHead()
         {
             //Console.SetCursorPosition(0, Console.CursorTop - 1);
-            //Console.Write("\r");
-            Console.SetCursorPosition(0, startCursorTop);
+            Console.Write("\r");
+            //Console.SetCursorPosition(0, startCursorTop);
         }
 
         private static void Print(string value)
@@ -53,7 +53,7 @@ namespace FileInfoTool.Helpers
         {
             started = true;
 
-            (_, startCursorTop) = Console.GetCursorPosition();
+            //(_, startCursorTop) = Console.GetCursorPosition();
 
             var progressText = FormatProgress(progressValues);
             Print(progressText);

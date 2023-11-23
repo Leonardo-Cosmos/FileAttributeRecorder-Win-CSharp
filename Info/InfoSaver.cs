@@ -31,6 +31,10 @@ namespace FileInfoTool.Info
 
         private readonly bool saveDirLastAccessTime;
 
+        private int savedFileCount;
+
+        private int savedDirectoryCount;
+
         public InfoSaver(string dirPath, string infoFilePath,
             InfoProperty[]? fileProperties, InfoProperty[]? dirProperties)
         {
@@ -109,7 +113,14 @@ namespace FileInfoTool.Info
                 return;
             }
 
+            savedFileCount = 0;
+            savedDirectoryCount = 0;
             var dirInfoRecord = Save(directory, recursive);
+            Console.WriteLine($"""
+                Saved
+                    File: {savedFileCount}
+                    Directory: {savedDirectoryCount}
+                """);
 
             var infoRecord = InfoRecord.Create(dirInfoRecord);
 
@@ -174,6 +185,8 @@ namespace FileInfoTool.Info
             bool saveHash = false;
             if (info is FileInfo)
             {
+                savedFileCount++;
+
                 saveCreationTime = saveFileCreationTime;
                 saveLastWriteTime = saveFileLastWriteTime;
                 saveLastAccessTime = saveFileLastAccessTime;
@@ -182,6 +195,8 @@ namespace FileInfoTool.Info
             }
             else if (info is DirectoryInfo)
             {
+                savedDirectoryCount++;
+
                 saveCreationTime = saveDirCreationTime;
                 saveLastWriteTime = saveDirLastWriteTime;
                 saveLastAccessTime = saveDirLastAccessTime;
@@ -222,11 +237,11 @@ namespace FileInfoTool.Info
                 FileInfo file = (info as FileInfo)!;
                 FileInfoRecord fileInfoRecord = (infoRecord as FileInfoRecord)!;
 
-                ProgressPrinter progressPrinter = new("Hash {0}: {1}, {2}/s");
+                Console.WriteLine($"Hash {file.GetRelativePath(dirPath)}");
+                ProgressPrinter progressPrinter = new("{0}, {1}/s");
                 fileInfoRecord.SHA512 = HashComputer.ComputeHash(file.FullName, hashProgress =>
                 {
-                    progressPrinter.Update(file.GetRelativePath(dirPath),
-                        hashProgress.Percentage, hashProgress.LengthPerSecond);
+                    progressPrinter.Update(hashProgress.Percentage, hashProgress.LengthPerSecond);
                 });
                 progressPrinter.End();
             }
