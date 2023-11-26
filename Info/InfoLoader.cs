@@ -33,9 +33,13 @@ namespace FileInfoTool.Info
 
         private readonly bool loadDirLastAccessTime;
 
-        private int loadedFileCount;
+        private int checkedFileCount;
 
-        private int loadedDirectoryCount;
+        private int checkedDirectoryCount;
+
+        private int sameFileCount;
+
+        private int sameDirectoryCount;
 
         private int changedFileCount;
 
@@ -153,19 +157,24 @@ namespace FileInfoTool.Info
                 return;
             }
 
-            loadedFileCount = 0;
-            loadedDirectoryCount = 0;
+            checkedFileCount = 0;
+            checkedDirectoryCount = 0;
             changedFileCount = 0;
             changedDirectoryCount = 0;
+            sameFileCount = 0;
+            sameDirectoryCount = 0;
             missingFileCount = 0;
             missingDirectoryCount = 0;
             unknownFileCount = 0;
             unknownDirectoryCount = 0;
             Load(directory, infoRecord.Directory, recursive, restore);
             Console.WriteLine($"""
-                Loaded
-                    File: {loadedFileCount}
-                    Directory: {loadedDirectoryCount}
+                Checked
+                    File: {checkedFileCount}
+                    Directory: {checkedDirectoryCount}
+                Same
+                    File: {sameFileCount}
+                    Directory: {sameDirectoryCount}
                 Changed
                     File: {changedFileCount}
                     Directory: {changedDirectoryCount}
@@ -208,11 +217,20 @@ namespace FileInfoTool.Info
                     else
                     {
                         PrintUnknownInfo(subDirectory);
+                        (var subDirUnknownFileCount, var subDirUnknownDirectoryCount) = CountDirectoryContent(subDirectory);
+                        unknownFileCount += subDirUnknownFileCount;
+                        unknownDirectoryCount += subDirUnknownDirectoryCount;
                     }
                 }
 
                 var missingSubDirInfoRecords = subDirInfoRecords.Except(loadedSubDirInfoRecords);
                 PrintMissingInfoRecords(directory, missingSubDirInfoRecords);
+                foreach (var missingSubDirInfoRecord in missingSubDirInfoRecords)
+                {
+                    (var subDirMissingFileCount, var subDirMissingDirectoryCount) = CountDirectoryRecordContent(missingSubDirInfoRecord);
+                    missingFileCount += subDirMissingFileCount;
+                    missingDirectoryCount += subDirMissingDirectoryCount;
+                }
             }
 
             var fileInfoRecords = dirInfoRecord.Files ?? new List<FileInfoRecord>();
@@ -282,6 +300,64 @@ namespace FileInfoTool.Info
             }
         }
 
+        private static (int, int) CountDirectoryContent(DirectoryInfo directory)
+        {
+            var fileCount = 0;
+            var directoryCount = 0;
+
+            DirectoryInfo[] subDirectories;
+            try
+            {
+                subDirectories = directory.GetDirectories();
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(ex.Message);
+                subDirectories = Array.Empty<DirectoryInfo>();
+            }
+            directoryCount += subDirectories.Length;
+            foreach (var subDirectory in subDirectories)
+            {
+                (var subDirFileCount, var subDirDirectoryCount) = CountDirectoryContent(subDirectory);
+                fileCount += subDirFileCount;
+                directoryCount += subDirDirectoryCount;
+            }
+
+            FileInfo[] files;
+            try
+            {
+                files = directory.GetFiles();
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(ex.Message);
+                files = Array.Empty<FileInfo>();
+            }
+            fileCount += files.Length;
+
+            return (fileCount, directoryCount);
+        }
+
+        private static (int, int) CountDirectoryRecordContent(DirectoryInfoRecord directoryRecord)
+        {
+            var directoryCount = 0;
+            var fileCount = 0;
+
+            var subDirInfoRecords = directoryRecord.Directories ?? new List<DirectoryInfoRecord>(0);
+            directoryCount += subDirInfoRecords.Count;
+            foreach (var subDirInfoRecord in subDirInfoRecords)
+            {
+                (var subDirFileCount, var subDirDirectoryCount) = CountDirectoryRecordContent(subDirInfoRecord);
+                fileCount += subDirFileCount;
+                directoryCount += subDirDirectoryCount;
+            }
+
+            var fileRecords = directoryRecord.Files ?? new List<FileInfoRecord>(0);
+            fileCount += fileRecords.Count;
+
+            return (fileCount, directoryCount);
+        }
+
         private void LoadInfoRecord(FileSystemInfo info, FileSystemInfoRecord infoRecord, bool restore)
         {
             bool loadCreationTime = false;
@@ -297,7 +373,7 @@ namespace FileInfoTool.Info
                 loadSize = loadFileSize;
                 loadHash = loadFileHash;
 
-                loadedFileCount++;
+                checkedFileCount++;
             }
             else if (info is DirectoryInfo)
             {
@@ -305,7 +381,7 @@ namespace FileInfoTool.Info
                 loadLastWriteTime = loadDirLastWriteTime;
                 loadLastAccessTime = loadDirLastAccessTime;
 
-                loadedDirectoryCount++;
+                checkedDirectoryCount++;
             }
 
             string? changedCreationTimeUtc = null;
@@ -435,6 +511,10 @@ namespace FileInfoTool.Info
                 {
                     changedFileCount++;
                 }
+                else
+                {
+                    sameFileCount++;
+                }
             }
             else if (infoRecord is DirectoryInfoRecord)
             {
@@ -442,6 +522,10 @@ namespace FileInfoTool.Info
                 if (isChanged)
                 {
                     changedDirectoryCount++;
+                }
+                else
+                {
+                    sameDirectoryCount++;
                 }
             }
 
