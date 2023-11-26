@@ -19,7 +19,7 @@ namespace FileInfoTool.Helpers
             this.format = format;
         }
 
-        private void MoveToHead()
+        private static void MoveToHead()
         {
             //Console.SetCursorPosition(0, Console.CursorTop - 1);
             Console.Write("\r");

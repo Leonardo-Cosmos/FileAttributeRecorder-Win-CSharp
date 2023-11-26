@@ -364,10 +364,13 @@ namespace FileInfoTool.Info
                 if (fileInfoRecord.SHA512 != null)
                 {
                     Console.WriteLine($"Hash {file.GetRelativePath(dirPath)}");
-                    ProgressPrinter progressPrinter = new("{0}, {1}/s");
+                    ProgressPrinter progressPrinter = new("{0} ({1} / {2}), {3}/s");
                     var sha512 = HashComputer.ComputeHash(file.FullName, hashProgress =>
                     {
-                        progressPrinter.Update(hashProgress.Percentage, hashProgress.LengthPerSecond);
+                        progressPrinter.Update(hashProgress.Percentage,
+                            hashProgress.TotalUpdatedLength.ToByteString(),
+                            hashProgress.TotalLength.ToByteString(),
+                            hashProgress.LengthPerSecond);
                     });
                     progressPrinter.End();
 
@@ -428,12 +431,18 @@ namespace FileInfoTool.Info
             if (infoRecord is FileInfoRecord)
             {
                 Console.Write(" file");
-                changedFileCount++;
+                if (isChanged)
+                {
+                    changedFileCount++;
+                }
             }
             else if (infoRecord is DirectoryInfoRecord)
             {
                 Console.Write(" directory");
-                changedDirectoryCount++;
+                if (isChanged)
+                {
+                    changedDirectoryCount++;
+                }
             }
 
             Console.WriteLine($" {info.GetRelativePath(dirPath)}");

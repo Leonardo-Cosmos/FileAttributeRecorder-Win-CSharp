@@ -238,10 +238,13 @@ namespace FileInfoTool.Info
                 FileInfoRecord fileInfoRecord = (infoRecord as FileInfoRecord)!;
 
                 Console.WriteLine($"Hash {file.GetRelativePath(dirPath)}");
-                ProgressPrinter progressPrinter = new("{0}, {1}/s");
+                ProgressPrinter progressPrinter = new("{0} ({1} / {2}), {3}/s");
                 fileInfoRecord.SHA512 = HashComputer.ComputeHash(file.FullName, hashProgress =>
                 {
-                    progressPrinter.Update(hashProgress.Percentage, hashProgress.LengthPerSecond);
+                    progressPrinter.Update(hashProgress.Percentage,
+                            hashProgress.TotalUpdatedLength.ToByteString(),
+                            hashProgress.TotalLength.ToByteString(),
+                            hashProgress.LengthPerSecond);
                 });
                 progressPrinter.End();
             }
