@@ -12,10 +12,9 @@ namespace FileInfoTool.Info
                     Save(option);
                     break;
                 case Mode.Restore:
-                    Restore(option);
-                    break;
                 case Mode.Validate:
-                    Validate(option);
+                case Mode.List:
+                    Load(option);
                     break;
                 case Mode.ExtractSub:
                     ExtractSubDirectory(option);
@@ -35,15 +34,9 @@ namespace FileInfoTool.Info
                 option.FilePropertyNames, option.DirPropertyNames).Save(option.Recursive, option.Overwrite);
         }
 
-        private static void Restore(LaunchOption option)
+        private static void Load(LaunchOption option)
         {
-            new InfoLoader(option.DirPath, option.InputFile!, true,
-                option.FilePropertyNames, option.DirPropertyNames).Load(option.Recursive);
-        }
-
-        private static void Validate(LaunchOption option)
-        {
-            new InfoLoader(option.DirPath, option.InputFile!, false,
+            new InfoLoader(option.DirPath, option.InputFile!, option.Mode,
                 option.FilePropertyNames, option.DirPropertyNames).Load(option.Recursive);
         }
 

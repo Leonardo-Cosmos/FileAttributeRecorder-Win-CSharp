@@ -11,7 +11,7 @@ namespace FileInfoTool.Info
 
         private readonly string infoFilePath;
 
-        private readonly bool restore;
+        private readonly Mode mode;
 
         private readonly InfoProperty[] fileProperties;
 
@@ -33,6 +33,10 @@ namespace FileInfoTool.Info
 
         private readonly bool loadDirLastAccessTime;
 
+        private int loadedFileCount;
+
+        private int loadedDirectoryCount;
+
         private int checkedFileCount;
 
         private int checkedDirectoryCount;
@@ -53,16 +57,16 @@ namespace FileInfoTool.Info
 
         private int unknownDirectoryCount;
 
-        public InfoLoader(string dirPath, string infoFilePath, bool restore,
+        public InfoLoader(string dirPath, string infoFilePath, Mode mode,
             InfoProperty[]? fileProperties, InfoProperty[]? dirProperties)
         {
             this.dirPath = dirPath;
             this.infoFilePath = infoFilePath;
-            this.restore = restore;
+            this.mode = mode;
 
             if (fileProperties != null)
             {
-                if (restore)
+                if (mode == Mode.Restore)
                 {
                     this.fileProperties = InfoProperties.ValidRestoreFileProperties
                         .Intersect(fileProperties)
@@ -77,7 +81,7 @@ namespace FileInfoTool.Info
             }
             else
             {
-                if (restore)
+                if (mode == Mode.Restore)
                 {
                     this.fileProperties = new InfoProperty[]
                     {
@@ -128,7 +132,7 @@ namespace FileInfoTool.Info
 
             Console.WriteLine($"""
                 Load file system info
-                    restore: {restore},
+                    mode: {Enum.GetName(typeof(Mode), mode)},
                     directory: {dirPath}
                     recursive: {recursive}
                     info file: {infoFilePath}
@@ -136,13 +140,6 @@ namespace FileInfoTool.Info
                     Directory properties: {string.Join(", ", dirPropertyNames)}
 
                 """);
-
-            var directory = new DirectoryInfo(dirPath);
-            if (!directory.Exists)
-            {
-                Console.WriteLine($"Directory doesn't exist, path: {dirPath}");
-                return;
-            }
 
             if (!File.Exists(infoFilePath))
             {
@@ -157,18 +154,38 @@ namespace FileInfoTool.Info
                 return;
             }
 
-            checkedFileCount = 0;
-            checkedDirectoryCount = 0;
-            changedFileCount = 0;
-            changedDirectoryCount = 0;
-            sameFileCount = 0;
-            sameDirectoryCount = 0;
-            missingFileCount = 0;
-            missingDirectoryCount = 0;
-            unknownFileCount = 0;
-            unknownDirectoryCount = 0;
-            Load(directory, infoRecord.Directory, recursive, restore);
-            Console.WriteLine($"""
+            if (mode == Mode.List)
+            {
+                loadedFileCount = 0;
+                loadedDirectoryCount = 0;
+                Load(infoRecord.Directory, recursive);
+                Console.WriteLine($"""
+                    Loaded
+                        File: {loadedFileCount}
+                        Directory: {loadedDirectoryCount}
+                    """);
+            }
+            else
+            {
+                var directory = new DirectoryInfo(dirPath);
+                if (!directory.Exists)
+                {
+                    Console.WriteLine($"Directory doesn't exist, path: {dirPath}");
+                    return;
+                }
+
+                checkedFileCount = 0;
+                checkedDirectoryCount = 0;
+                changedFileCount = 0;
+                changedDirectoryCount = 0;
+                sameFileCount = 0;
+                sameDirectoryCount = 0;
+                missingFileCount = 0;
+                missingDirectoryCount = 0;
+                unknownFileCount = 0;
+                unknownDirectoryCount = 0;
+                Load(directory, infoRecord.Directory, recursive, mode == Mode.Restore);
+                Console.WriteLine($"""
                 Checked
                     File: {checkedFileCount}
                     Directory: {checkedDirectoryCount}
@@ -185,6 +202,29 @@ namespace FileInfoTool.Info
                     File: {unknownFileCount}
                     Directory: {unknownDirectoryCount}
                 """);
+            }
+        }
+
+        private void Load(DirectoryInfoRecord dirInfoRecord, bool recursive)
+        {
+            if (recursive)
+            {
+                var subDirInfoRecords = dirInfoRecord.Directories ?? new List<DirectoryInfoRecord>(0);
+                foreach (var subDirInfoRecord in subDirInfoRecords)
+                {
+                    subDirInfoRecord.Directory = dirInfoRecord;
+                    Load(subDirInfoRecord, recursive);
+                }
+            }
+
+            var fileInfoRecords = dirInfoRecord.Files ?? new List<FileInfoRecord>(0);
+            foreach (var fileInfoRecord in fileInfoRecords)
+            {
+                fileInfoRecord.Directory = dirInfoRecord;
+                PrintLoadedInfoRecord(fileInfoRecord);
+            }
+
+            PrintLoadedInfoRecord(dirInfoRecord);
         }
 
         private void Load(DirectoryInfo directory, DirectoryInfoRecord dirInfoRecord,
@@ -192,7 +232,7 @@ namespace FileInfoTool.Info
         {
             if (recursive)
             {
-                var subDirInfoRecords = dirInfoRecord.Directories ?? new List<DirectoryInfoRecord>();
+                var subDirInfoRecords = dirInfoRecord.Directories ?? new List<DirectoryInfoRecord>(0);
                 var loadedSubDirInfoRecords = new List<DirectoryInfoRecord>();
                 DirectoryInfo[] subDirectories;
                 try
@@ -233,7 +273,7 @@ namespace FileInfoTool.Info
                 }
             }
 
-            var fileInfoRecords = dirInfoRecord.Files ?? new List<FileInfoRecord>();
+            var fileInfoRecords = dirInfoRecord.Files ?? new List<FileInfoRecord>(0);
             var loadedFileInfoRecords = new List<FileInfoRecord>();
             FileInfo[] files;
             try
@@ -478,6 +518,68 @@ namespace FileInfoTool.Info
             else
             {
                 return !dateTime.ToISOString().Equals(isoString);
+            }
+        }
+
+        private void PrintLoadedInfoRecord(FileSystemInfoRecord infoRecord)
+        {
+            bool loadCreationTime = false;
+            bool loadLastWriteTime = false;
+            bool loadLastAccessTime = false;
+            bool loadSize = false;
+            bool loadHash = false;
+            if (infoRecord is FileInfoRecord)
+            {
+                loadCreationTime = loadFileCreationTime;
+                loadLastWriteTime = loadFileLastWriteTime;
+                loadLastAccessTime = loadFileLastAccessTime;
+                loadSize = loadFileSize;
+                loadHash = loadFileHash;
+
+                loadedFileCount++;
+            }
+            else if (infoRecord is DirectoryInfoRecord)
+            {
+                loadCreationTime = loadDirCreationTime;
+                loadLastWriteTime = loadDirLastWriteTime;
+                loadLastAccessTime = loadDirLastAccessTime;
+
+                loadedDirectoryCount++;
+            }
+
+            Console.Write("Loaded");
+            if (infoRecord is FileInfoRecord)
+            {
+                Console.Write(" file");
+            }
+            else if (infoRecord is DirectoryInfoRecord)
+            {
+                Console.Write(" directory");
+            }
+
+            Console.WriteLine($" {infoRecord.GetRelativePath()}");
+            if (loadCreationTime)
+            {
+                Console.WriteLine($"  date created: {infoRecord.CreationTimeUtc}");
+            }
+            if (loadLastWriteTime)
+            {
+                Console.WriteLine($"  date modified: {infoRecord.LastWriteTimeUtc}");
+            }
+            if (loadLastAccessTime)
+            {
+                Console.WriteLine($"  date accessed: {infoRecord.LastAccessTimeUtc}");
+            }
+            if (infoRecord is FileInfoRecord fileInfoRecord)
+            {
+                if (loadSize)
+                {
+                    Console.WriteLine($"  size: {fileInfoRecord!.Size?.ToByteDetailString()}");
+                }
+                if (loadHash)
+                {
+                    Console.WriteLine($"  SHA512: {fileInfoRecord.SHA512}");
+                }
             }
         }
 

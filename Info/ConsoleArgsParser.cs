@@ -5,11 +5,40 @@ namespace FileInfoTool.Info
 {
     enum Mode
     {
+        /// <summary>
+        /// Save file system info to a record.
+        /// </summary>
         Save,
-        Restore,
+
+        /// <summary>
+        /// List info of saved record.
+        /// </summary>
+        List,
+
+        /// <summary>
+        /// Validate if file system info is changed from saved value.
+        /// </summary>
         Validate,
+
+        /// <summary>
+        /// Restore file system info to saved value if it is changed.
+        /// Not all info properties are supported.
+        /// </summary>
+        Restore,
+
+        /// <summary>
+        /// Extract a sub directory to another record.
+        /// </summary>
         ExtractSub,
+
+        /// <summary>
+        /// Add another record as a sub directory.
+        /// </summary>
         AddSub,
+
+        /// <summary>
+        /// Remove a sub directory.y]dxc,
+        /// </summary>
         RemoveSub,
     }
 
@@ -117,7 +146,7 @@ namespace FileInfoTool.Info
             }
 
             string? inputFilePath = TakeArgValue(argDict, inputFilePathKeys);
-            if (inputFilePath == null && (mode == Mode.Restore || mode == Mode.Validate))
+            if (inputFilePath == null && (mode == Mode.Restore || mode == Mode.Validate || mode == Mode.List))
             {
                 inputFilePath = GetDefaultInfoFilePath();
             }

@@ -1,7 +1,6 @@
 ﻿/* 2023/10/26 */
 
 using System.ComponentModel;
-using System.Runtime.Serialization;
 
 namespace FileInfoTool.Models
 {
@@ -16,5 +15,10 @@ namespace FileInfoTool.Models
 
         [DefaultValue(false)]
         public bool GetDirectoriesFailed { get; set; }
+
+        public override string GetRelativePath()
+        {
+            return base.GetRelativePath() + Path.DirectorySeparatorChar;
+        }
     }
 }
