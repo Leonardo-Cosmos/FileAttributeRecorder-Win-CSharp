@@ -481,14 +481,31 @@ namespace FileInfoTool.Info
                 {
                     Console.WriteLine($"Hash {file.GetRelativePath(dirPath)}");
                     ProgressPrinter progressPrinter = new("{0} ({1} / {2}), {3}/s");
-                    var sha512 = HashComputer.ComputeHash(file.FullName, hashProgress =>
+                    string sha512 = "";
+                    Exception? fileEx = null;
+                    try
                     {
-                        progressPrinter.Update(hashProgress.Percentage,
-                            hashProgress.TotalUpdatedLength.ToByteString(),
-                            hashProgress.TotalLength.ToByteString(),
-                            hashProgress.LengthPerSecond);
-                    });
-                    progressPrinter.End();
+                        sha512 = HashComputer.ComputeHash(file.FullName, hashProgress =>
+                        {
+                            progressPrinter.Update(hashProgress.Percentage,
+                                hashProgress.TotalUpdatedLength.ToByteString(),
+                                hashProgress.TotalLength.ToByteString(),
+                                hashProgress.LengthPerSecond);
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        fileEx = ex;
+                    }
+                    finally
+                    {
+                        progressPrinter.End();
+                    }
+
+                    if (fileEx != null)
+                    {
+                        Console.Error.WriteLine(fileEx.Message);
+                    }
 
                     if (fileInfoRecord.SHA512 != sha512)
                     {
