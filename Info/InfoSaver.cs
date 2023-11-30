@@ -148,6 +148,7 @@ namespace FileInfoTool.Info
                 var fileInfoRecord = SaveInfoRecord<FileInfoRecord>(file);
                 fileInfoRecords.Add(fileInfoRecord);
             }
+            fileInfoRecords.Sort(FileSystemInfoRecord.CompareByName);
             dirInfoRecord.Files = fileInfoRecords;
 
             if (recursive)
@@ -169,6 +170,7 @@ namespace FileInfoTool.Info
                     var subDirInfoRecord = Save(subDirectory, recursive);
                     subDirInfoRecords.Add(subDirInfoRecord);
                 }
+                subDirInfoRecords.Sort(FileSystemInfoRecord.CompareByName);
                 dirInfoRecord.Directories = subDirInfoRecords;
             }
 

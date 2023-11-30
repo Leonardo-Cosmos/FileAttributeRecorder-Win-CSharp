@@ -54,5 +54,31 @@ namespace FileInfoTool.Models
             var path = Path.Combine(pathtNames.ToArray());
             return path[baseDirectoryName.Length..^0];
         }
+
+        public static int CompareByName(FileSystemInfoRecord? x, FileSystemInfoRecord? y)
+        {
+            if (x?.Name == null)
+            {
+                if (y?.Name == null)
+                {
+                    return 0;
+                }
+                else
+                {
+                    return -1;
+                }
+            }
+            else
+            {
+                if (y?.Name == null)
+                {
+                    return 1;
+                }
+                else
+                {
+                    return x.Name.CompareTo(y.Name);
+                }
+            }
+        }
     }
 }
