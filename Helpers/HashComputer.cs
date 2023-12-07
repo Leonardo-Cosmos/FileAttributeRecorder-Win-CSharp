@@ -1,6 +1,7 @@
 ﻿/* 2023/11/17 */
 using FileInfoTool.Extensions;
 using System.Diagnostics;
+using System.IO.Pipelines;
 using System.Security.Cryptography;
 
 namespace FileInfoTool.Helpers
@@ -64,6 +65,69 @@ namespace FileInfoTool.Helpers
 
             var hashBytes = hashComputer.Hash ?? Array.Empty<byte>();
             return BitConverter.ToString(hashBytes).Replace("-", "");
+        }
+
+        internal static async Task<string> ComputeHashAsync(string filePath, HashProgressHandler? reportProgress = null)
+        {
+            using var fileStream = File.OpenRead(filePath);
+            var fileLength = fileStream.Length;
+
+            var hashComputer = SHA512.Create();
+            hashComputer.Initialize();
+
+            var totalReadLength = 0L;
+            var reportReadLength = 0L;
+            var reportLoopCount = 0;
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
+            var elapsedMilliseconds = 0L;
+
+            PipeReader reader = PipeReader.Create(fileStream);
+            try
+            {
+                while (true)
+                {
+                    ReadResult result = await reader.ReadAsync();
+                    var buffer = result.Buffer;
+
+                    foreach (ReadOnlyMemory<byte> segment in buffer)
+                    {
+                        var byteBuffer = segment.ToArray();
+                        hashComputer.TransformBlock(byteBuffer, 0, byteBuffer.Length, null, 0);
+                        totalReadLength += byteBuffer.Length;
+                        reportReadLength += byteBuffer.Length;                        
+                    }
+                    reader.AdvanceTo(buffer.End);
+                    reportLoopCount++;
+
+                    elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+                    if (reportLoopCount >= minReportLoop && reportReadLength > minReportLength
+                        && elapsedMilliseconds > minReportMilliseconds)
+                    {
+                        reportProgress?.Invoke(new(fileLength, totalReadLength, reportReadLength, elapsedMilliseconds));
+                        reportReadLength = 0L;
+                        reportLoopCount = 0;
+                        stopwatch.Restart();
+                    }
+
+                    if (result.IsCompleted)
+                    {
+                        break;
+                    }
+                }
+
+                elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+                stopwatch.Stop();
+                reportProgress?.Invoke(new(fileLength, totalReadLength, reportReadLength, elapsedMilliseconds));
+                hashComputer.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+
+                var hashBytes = hashComputer.Hash ?? Array.Empty<byte>();
+                return BitConverter.ToString(hashBytes).Replace("-", "");
+            } 
+            finally
+            {
+                await reader.CompleteAsync();
+            }
         }
     }
 

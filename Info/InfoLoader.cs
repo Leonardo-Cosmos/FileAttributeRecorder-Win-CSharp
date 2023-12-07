@@ -33,6 +33,8 @@ namespace FileInfoTool.Info
 
         private readonly bool loadDirLastAccessTime;
 
+        private readonly bool fastHash;
+
         private int loadedFileCount;
 
         private int loadedDirectoryCount;
@@ -58,7 +60,7 @@ namespace FileInfoTool.Info
         private int unknownDirectoryCount;
 
         public InfoLoader(string dirPath, string infoFilePath, Mode mode,
-            InfoProperty[]? fileProperties, InfoProperty[]? dirProperties)
+            InfoProperty[]? fileProperties, InfoProperty[]? dirProperties, bool fastHash = false)
         {
             this.dirPath = dirPath;
             this.infoFilePath = infoFilePath;
@@ -123,6 +125,8 @@ namespace FileInfoTool.Info
             loadDirCreationTime = this.dirProperties.Contains(InfoProperty.CreationTime);
             loadDirLastWriteTime = this.dirProperties.Contains(InfoProperty.LastWriteTime);
             loadDirLastAccessTime = this.dirProperties.Contains(InfoProperty.LastAccessTime);
+
+            this.fastHash = fastHash;
         }
 
         public void Load(bool recursive)
@@ -138,6 +142,7 @@ namespace FileInfoTool.Info
                     info file: {infoFilePath}
                     File proerties: {string.Join(", ", filePropertyNames)}
                     Directory properties: {string.Join(", ", dirPropertyNames)}
+                    Fast hash: {fastHash}
 
                 """);
 
@@ -485,13 +490,26 @@ namespace FileInfoTool.Info
                     Exception? fileEx = null;
                     try
                     {
-                        sha512 = HashComputer.ComputeHash(file.FullName, hashProgress =>
+                        if (fastHash)
                         {
-                            progressPrinter.Update(hashProgress.Percentage,
-                                hashProgress.TotalUpdatedLength.ToByteString(),
-                                hashProgress.TotalLength.ToByteString(),
-                                hashProgress.LengthPerSecond);
-                        });
+                            sha512 = HashComputer.ComputeHashAsync(file.FullName, hashProgress =>
+                            {
+                                progressPrinter.Update(hashProgress.Percentage,
+                                    hashProgress.TotalUpdatedLength.ToByteString(),
+                                    hashProgress.TotalLength.ToByteString(),
+                                    hashProgress.LengthPerSecond);
+                            }).Result;
+                        }
+                        else
+                        {
+                            sha512 = HashComputer.ComputeHash(file.FullName, hashProgress =>
+                            {
+                                progressPrinter.Update(hashProgress.Percentage,
+                                    hashProgress.TotalUpdatedLength.ToByteString(),
+                                    hashProgress.TotalLength.ToByteString(),
+                                    hashProgress.LengthPerSecond);
+                            });
+                        }
                     }
                     catch (Exception ex)
                     {

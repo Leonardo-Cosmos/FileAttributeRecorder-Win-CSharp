@@ -44,7 +44,7 @@ namespace FileInfoTool.Info
 
     internal record LaunchOption(Mode Mode, string DirPath, string? InputFile, string? OutputFile,
         InfoProperty[]? FilePropertyNames, InfoProperty[]? DirPropertyNames, bool Recursive,
-        string? BaseFile, string? RelativePath, string? SubFile, bool Overwrite);
+        string? BaseFile, string? RelativePath, string? SubFile, bool Overwrite, bool FastHash);
 
     internal static class ConsoleArgsParser
     {
@@ -69,6 +69,8 @@ namespace FileInfoTool.Info
         private static readonly string[] subFilePathKeys = new string[] { "-sub", "-sub-info" };
 
         private static readonly string[] overwriteKeys = new string[] { "-ow", "-over-write" };
+
+        private static readonly string[] fastReadKeys = new string[] { "-fh", "-fast-hash" };
 
         private const string creationTimePropertyValue = "c";
 
@@ -196,6 +198,8 @@ namespace FileInfoTool.Info
 
             var overwrite = TakeArgValue(argDict, overwriteKeys) != null;
 
+            var fastRead = TakeArgValue(argDict, fastReadKeys) != null;
+
             if (argDict.Count > 0)
             {
                 var unknownArgs = ConvertDictToArgs(argDict);
@@ -204,7 +208,7 @@ namespace FileInfoTool.Info
 
             return new LaunchOption(mode.Value, dirPath, inputFilePath, outputFilePath,
                 fileProperties, dirProperties, recursive,
-                baseFilePath, relativePath, subFilePath, overwrite);
+                baseFilePath, relativePath, subFilePath, overwrite, fastRead);
         }
 
         private static Dictionary<string, string> ConvertArgsToDict(IEnumerable<string> args)

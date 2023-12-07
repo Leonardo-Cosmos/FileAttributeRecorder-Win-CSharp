@@ -31,13 +31,15 @@ namespace FileInfoTool.Info
         private static void Save(LaunchOption option)
         {
             new InfoSaver(option.DirPath, option.OutputFile!,
-                option.FilePropertyNames, option.DirPropertyNames).Save(option.Recursive, option.Overwrite);
+                option.FilePropertyNames, option.DirPropertyNames, fastHash: option.FastHash)
+                .Save(option.Recursive, option.Overwrite);
         }
 
         private static void Load(LaunchOption option)
         {
             new InfoLoader(option.DirPath, option.InputFile!, option.Mode,
-                option.FilePropertyNames, option.DirPropertyNames).Load(option.Recursive);
+                option.FilePropertyNames, option.DirPropertyNames, fastHash: option.FastHash)
+                .Load(option.Recursive);
         }
 
         private static void ExtractSubDirectory(LaunchOption option)
