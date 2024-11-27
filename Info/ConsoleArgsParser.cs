@@ -48,29 +48,29 @@ namespace FileInfoTool.Info
 
     internal static class ConsoleArgsParser
     {
-        private static readonly string[] dirPathKeys = new string[] { "-d", "-dir" };
+        private static readonly string[] dirPathKeys = ["-d", "-dir"];
 
-        private static readonly string[] inputFilePathKeys = new string[] { "-i", "-input" };
+        private static readonly string[] inputFilePathKeys = ["-i", "-input"];
 
-        private static readonly string[] outputFilePathKeys = new string[] { "-o", "-output" };
+        private static readonly string[] outputFilePathKeys = ["-o", "-output"];
 
-        private static readonly string[] recursiveKeys = new string[] { "-r", "-recursive" };
+        private static readonly string[] recursiveKeys = ["-r", "-recursive"];
 
-        private static readonly string[] propertyKeys = new string[] { "-prop", "-property" };
+        private static readonly string[] propertyKeys = ["-prop", "-property"];
 
-        private static readonly string[] filePropertyKeys = new string[] { "-fprop", "-file-prop", "-file-property" };
+        private static readonly string[] filePropertyKeys = ["-fprop", "-file-prop", "-file-property"];
 
-        private static readonly string[] dirPropertyKeys = new string[] { "-dprop", "-dir-prop", "-dir-property" };
+        private static readonly string[] dirPropertyKeys = ["-dprop", "-dir-prop", "-dir-property"];
 
-        private static readonly string[] baseFilePathKeys = new string[] { "-base", "-base-info" };
+        private static readonly string[] baseFilePathKeys = ["-base", "-base-info"];
 
-        private static readonly string[] relativePathKeys = new string[] { "-path", "-relative-path" };
+        private static readonly string[] relativePathKeys = ["-path", "-relative-path"];
 
-        private static readonly string[] subFilePathKeys = new string[] { "-sub", "-sub-info" };
+        private static readonly string[] subFilePathKeys = ["-sub", "-sub-info"];
 
-        private static readonly string[] overwriteKeys = new string[] { "-ow", "-over-write" };
+        private static readonly string[] overwriteKeys = ["-ow", "-over-write"];
 
-        private static readonly string[] fastReadKeys = new string[] { "-fh", "-fast-hash" };
+        private static readonly string[] fastReadKeys = ["-fh", "-fast-hash"];
 
         private const string creationTimePropertyValue = "c";
 
@@ -262,7 +262,7 @@ namespace FileInfoTool.Info
                 return Enum.GetValues<InfoProperty>();
             }
 
-            List<InfoProperty> propertyNames = new();
+            List<InfoProperty> propertyNames = [];
             foreach (char valueChar in propertyValue)
             {
                 var nameValue = valueChar.ToString().ToLower();
@@ -292,7 +292,7 @@ namespace FileInfoTool.Info
                         break;
                 }
             }
-            return propertyNames.ToArray();
+            return [.. propertyNames];
         }
     }
 }

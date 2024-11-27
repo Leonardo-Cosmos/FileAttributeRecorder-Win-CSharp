@@ -35,37 +35,37 @@ namespace FileInfoTool.Info
 
     internal static class InfoProperties
     {
-        internal static readonly InfoProperty[] ValidSaveFileProperties = new InfoProperty[]
-        {
+        internal static readonly InfoProperty[] ValidSaveFileProperties =
+        [
             InfoProperty.CreationTime,
             InfoProperty.LastWriteTime,
             InfoProperty.LastAccessTime,
             InfoProperty.Size,
             InfoProperty.Hash,
-        };
+        ];
 
-        internal static readonly InfoProperty[] ValidValidateFileProperties = new InfoProperty[]
-        {
+        internal static readonly InfoProperty[] ValidValidateFileProperties =
+        [
             InfoProperty.CreationTime,
             InfoProperty.LastWriteTime,
             InfoProperty.LastAccessTime,
             InfoProperty.Size,
             InfoProperty.Hash,
-        };
+        ];
 
-        internal static readonly InfoProperty[] ValidRestoreFileProperties = new InfoProperty[]
-        {
+        internal static readonly InfoProperty[] ValidRestoreFileProperties =
+        [
             InfoProperty.CreationTime,
             InfoProperty.LastWriteTime,
             InfoProperty.LastAccessTime,
-        };
+        ];
 
-        internal static readonly InfoProperty[] ValidDirProperties = new InfoProperty[]
-        {
+        internal static readonly InfoProperty[] ValidDirProperties =
+        [
             InfoProperty.CreationTime,
             InfoProperty.LastWriteTime,
             InfoProperty.LastAccessTime,
-        };
+        ];
     }
 
     internal static class InfoPropertyExtension

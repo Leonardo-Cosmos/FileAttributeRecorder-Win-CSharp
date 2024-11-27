@@ -51,13 +51,13 @@ namespace FileInfoTool.Info
             }
             else
             {
-                this.fileProperties = new InfoProperty[]
-                    {
+                this.fileProperties =
+                    [
                         InfoProperty.CreationTime,
                         InfoProperty.LastWriteTime,
                         InfoProperty.LastAccessTime,
                         InfoProperty.Size,
-                    };
+                    ];
             }
 
             if (dirProperties != null)
@@ -68,11 +68,11 @@ namespace FileInfoTool.Info
             }
             else
             {
-                this.dirProperties = new InfoProperty[] {
+                this.dirProperties = [
                     InfoProperty.CreationTime,
                     InfoProperty.LastWriteTime,
                     InfoProperty.LastAccessTime,
-                };
+                ];
             }
 
             saveFileCreationTime = this.fileProperties.Contains(InfoProperty.CreationTime);

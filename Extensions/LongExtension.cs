@@ -7,12 +7,12 @@ namespace FileInfoTool.Extensions
     {
         private const int kilo = 0x400;
 
-        private static readonly string[] units = new string[] {
+        private static readonly string[] units = [
             "B",
             "KB",
             "MB",
             "GB",
-        };
+        ];
 
         private static readonly string lastUnit = "TB";
 

@@ -85,20 +85,20 @@ namespace FileInfoTool.Info
             {
                 if (mode == Mode.Restore)
                 {
-                    this.fileProperties = new InfoProperty[]
-                    {
+                    this.fileProperties =
+                    [
                         InfoProperty.CreationTime,
                         InfoProperty.LastWriteTime,
-                    };
+                    ];
                 }
                 else
                 {
-                    this.fileProperties = new InfoProperty[]
-                    {
+                    this.fileProperties =
+                    [
                         InfoProperty.CreationTime,
                         InfoProperty.LastWriteTime,
                         InfoProperty.Size,
-                    };
+                    ];
                 }
             }
 
@@ -110,10 +110,10 @@ namespace FileInfoTool.Info
             }
             else
             {
-                this.dirProperties = new InfoProperty[] {
+                this.dirProperties = [
                     InfoProperty.CreationTime,
                     InfoProperty.LastWriteTime,
-                };
+                ];
             }
 
             loadFileCreationTime = this.fileProperties.Contains(InfoProperty.CreationTime);
